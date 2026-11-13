@@ -434,23 +434,14 @@ function itemsFor(d) {
   // … und beginnen erst nach dem Bringen
   const bringt = out.find((it) => it.slot === 'bringt');
   if (bringt) out.forEach((it) => { if (it !== bringt && !it.kita && it.s < bringt.e && it.e > bringt.e && it.s <= bringt.s) it.s = bringt.e; });
-  // Nichts nebeneinander: wichtigere Termine zuerst, die anderen weichen in freie Zeit aus
+  // Nichts nebeneinander: Überschneidungen liegen übereinander, wichtigere oben und leicht eingerückt
   const prio = (it) => it.slot && it.slot !== 'nachm' ? 1 : it.own ? 2 : it.google ? 3 : it.kita ? 5 : 4;
-  const taken = [], shown = [];
-  out.slice().sort((a, b) => prio(a) - prio(b) || a.s - b.s).forEach((it) => {
-    let free = [[it.s, it.e]];
-    taken.forEach(([a, b]) => {
-      const next = [];
-      free.forEach(([x, y]) => { if (b <= x || a >= y) next.push([x, y]); else { if (a > x) next.push([x, a]); if (b < y) next.push([b, y]); } });
-      free = next;
-    });
-    const best = free.sort((p, q) => (q[1] - q[0]) - (p[1] - p[0]))[0];
-    if (!best || best[1] - best[0] < 30) return;
-    it.s = best[0]; it.e = best[1]; it.lane = 0; it.lanes = 1;
-    taken.push([it.s, it.e]); shown.push(it);
+  const order = out.slice().sort((a, b) => prio(b) - prio(a) || a.s - b.s);
+  order.forEach((it, i) => {
+    it.depth = Math.min(3, order.slice(0, i).filter((o) => !o.kita && o.s < it.e && o.e > it.s).length);
+    it.z = 2 + i;
   });
-  shown.sort((a, b) => a.s - b.s);
-  return shown;
+  return order;
 }
 
 let offset = 0, ppm = 0.7;
@@ -514,7 +505,9 @@ function render() {
     itemsCache[i] = dayItems;
     dayItems.forEach((it, n) => {
       const top = y(it.s) + 2, hgt = Math.max(36, (it.e - it.s) * ppm - 4);
-      const wPct = 100 / it.lanes, left = 'calc(' + (it.lane * wPct) + '% + 6px)', width = 'calc(' + wPct + '% - 12px)';
+      const ind = (it.depth || 0) * (compact ? 8 : 16);
+      const left = (6 + ind) + 'px', width = 'calc(100% - ' + (12 + ind) + 'px)';
+      const layer = 'z-index:' + (it.kita ? 1 : it.z) + ';' + (it.depth ? 'box-shadow:0 -3px 10px rgba(42,42,51,.18);' : '');
       const tall = hgt >= 110 || (compact && hgt >= 70);
       const isz = (big, mid, sm) => tiny ? Math.min(sm, 26) : (tall ? big : (hgt > 60 ? mid : sm));
       let inner, border;
@@ -544,7 +537,7 @@ function render() {
         }
       }
       if (it.own) inner += STAR;
-      col += '<div class="card' + (tall ? ' tall' : '') + '" data-n="' + n + '" style="cursor:pointer;' + (compact ? 'padding:0 6px;gap:6px;' : '') + 'top:' + top + 'px;height:' + hgt + 'px;left:' + left + ';width:' + width + ';border-color:' + border + '">' + inner + '</div>';
+      col += '<div class="card' + (tall ? ' tall' : '') + '" data-n="' + n + '" style="cursor:pointer;' + layer + (compact ? 'padding:0 6px;gap:6px;' : '') + 'top:' + top + 'px;height:' + hgt + 'px;left:' + left + ';width:' + width + ';border-color:' + border + '">' + inner + '</div>';
     });
     if (isToday(d) && nowM >= START && nowM <= END) {
       col += '<div class="nowline" style="top:' + (y(nowM) - 2) + 'px"></div><div class="nowdot" style="top:' + y(nowM) + 'px"></div>';
