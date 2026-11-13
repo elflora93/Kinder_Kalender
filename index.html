@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Noras Kalender – Prototyp</title>
+<title>Noras Kalender</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #FBF8F3; --ink: #2A2A33; --muted: #5E5A52; --line: #E2DBCF; --soft: #F1ECE3;
@@ -112,6 +113,9 @@
   .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 300px; align-self: center; }
   .keypad button { height: 64px; border-radius: 16px; border: 2px solid var(--line); background: #fff; font-size: 26px; font-weight: 700; cursor: pointer; }
   .hidden { display: none !important; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 14px; font-size: 17px; z-index: 100; }
+  .field { display: flex; flex-direction: column; gap: 6px; font-size: 17px; font-weight: 700; text-align: left; }
+  .field input { font-family: inherit; font-size: 20px; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; -webkit-user-select: text; user-select: text; }
 </style>
 </head>
 <body>
@@ -128,6 +132,7 @@
   <div class="grid" id="grid"></div>
 </div>
 <div id="layer"></div>
+<div id="toast" class="hidden"></div>
 
 <script>
 (function () {
@@ -207,7 +212,77 @@ function defaults() {
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || defaults(); } catch (e) { S = defaults(); }
 S.settings = S.settings || { days: 3 };
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* Speicher voll oder gesperrt */ } }
+S.over = S.over || {};
+
+// ---------- Supabase ----------
+const SUPABASE_URL = 'https://zybcckfhjmdrrsayrquu.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_IJZcClgYEFDN2OSPTmGMhQ_ASrXPNlc';
+const PARTS = ['persons', 'week', 'special', 'entries', 'over'];
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const synced = {};
+let online = false;
+
+function cache() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* Speicher voll oder gesperrt */ } }
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.add('hidden'), 4000);
+}
+function save() {
+  cache();
+  if (!sb || !online) return;
+  PARTS.forEach((p) => {
+    const j = JSON.stringify(S[p] === undefined ? null : S[p]);
+    if (j === synced[p]) return;
+    synced[p] = j;
+    sb.from('daten').upsert({ schluessel: p, wert: S[p], geaendert: new Date().toISOString() })
+      .then(({ error }) => { if (error) { delete synced[p]; toast('Speichern hat nicht geklappt. Bitte Internet prüfen.'); } });
+  });
+}
+async function loadRemote() {
+  if (!sb || !online) return;
+  const { data, error } = await sb.from('daten').select('schluessel, wert');
+  if (error) { toast('Daten konnten nicht geladen werden.'); return; }
+  const have = {};
+  (data || []).forEach((r) => { have[r.schluessel] = true; S[r.schluessel] = r.wert; synced[r.schluessel] = JSON.stringify(r.wert); });
+  S.over = S.over || {};
+  cache();
+  // Beim allerersten Start die Beispieldaten hochladen
+  if (PARTS.some((p) => !have[p])) save();
+  render();
+}
+function listen() {
+  sb.channel('daten-aenderungen')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'daten' }, (payload) => {
+      const r = payload.new;
+      if (!r || !r.schluessel || PARTS.indexOf(r.schluessel) < 0) return;
+      const j = JSON.stringify(r.wert);
+      if (j === synced[r.schluessel]) return;
+      synced[r.schluessel] = j; S[r.schluessel] = r.wert; cache(); render();
+    })
+    .subscribe();
+}
+function showLogin(msg) {
+  document.getElementById('layer').innerHTML = '<div class="overlay"><form class="sheet" id="loginForm" style="width:min(460px,100%)">' +
+    '<h2>Anmelden</h2><div class="muted" style="font-size:17px">Einmal pro Gerät mit dem Familien-Konto anmelden. Danach bleibt das Gerät angemeldet.</div>' +
+    '<label class="field">E-Mail<input type="email" id="lgMail" autocomplete="username" required></label>' +
+    '<label class="field">Passwort<input type="password" id="lgPass" autocomplete="current-password" required></label>' +
+    (msg ? '<div style="color:#B3342D;font-weight:700">' + msg + '</div>' : '') +
+    '<button class="done-btn" type="submit" style="width:100%;height:64px;font-size:24px">Anmelden</button></form></div>';
+  document.getElementById('loginForm').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const { error } = await sb.auth.signInWithPassword({ email: document.getElementById('lgMail').value.trim(), password: document.getElementById('lgPass').value });
+    if (error) { showLogin('E-Mail oder Passwort stimmt nicht.'); return; }
+    document.getElementById('layer').innerHTML = '';
+    online = true; await loadRemote(); listen();
+  };
+}
+async function startSync() {
+  if (!sb) { toast('Keine Verbindung zum Server. Es wird nur auf diesem Gerät gespeichert.'); return; }
+  const { data } = await sb.auth.getSession();
+  if (!data.session) { showLogin(); return; }
+  online = true; await loadRemote(); listen();
+}
 
 // ---------- Hilfen ----------
 const $ = (id) => document.getElementById(id);
@@ -520,7 +595,7 @@ function openParent() {
 }
 
 function tabPersonen(el) {
-  let h = '<h2>Personen</h2><div class="muted">Name, Farbe und Foto. Das Foto bleibt in diesem Prototyp nur auf diesem Gerät.</div><div class="cards3">';
+  let h = '<h2>Personen</h2><div class="muted">Name, Farbe und Foto.</div><div class="cards3">';
   Object.keys(S.persons).forEach((k) => {
     const p = S.persons[k];
     h += '<div class="pcard">' + avatar(k, 96) +
@@ -633,13 +708,13 @@ function tabEintraege(el) {
     h += '<div class="row">' + ic + '<div style="flex:1"><div style="font-size:19px;font-weight:700">' + x.sym + '</div><div class="muted">' + DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + '. ' + MONTHS[d.getMonth()] + ' · ' + fmt(x.start) + ' bis ' + fmt(x.end) + ' Uhr</div></div>' +
       '<button class="pill-btn" data-del="' + x.id + '">Löschen</button></div>';
   });
-  h += '<div style="margin-top:20px"><button class="pill-btn" id="resetBtn">Alle Testdaten zurücksetzen</button></div>';
+  h += '<div style="margin-top:20px"><button class="pill-btn" id="resetBtn">Alles auf Beispieldaten zurücksetzen</button></div>';
   el.innerHTML = h;
   el.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => { S.entries = S.entries.filter((x) => String(x.id) !== b.dataset.del); save(); tabEintraege(el); });
   let armed = false;
   $('resetBtn').onclick = () => {
     if (!armed) { armed = true; $('resetBtn').textContent = 'Wirklich alles zurücksetzen? Nochmal tippen'; return; }
-    S = defaults(); save(); tabEintraege(el);
+    const keep = S.settings; S = defaults(); S.settings = keep; S.over = {}; save(); tabEintraege(el);
   };
 }
 
@@ -653,15 +728,22 @@ function tabAnzeige(el) {
   let h = '<h2>Anzeige</h2><div class="muted" style="font-size:18px">Wie viele Tage sollen nebeneinander zu sehen sein? Für das iPad passen 3 Tage gut, für einen großen Monitor an der Wand zum Beispiel 7 Tage.</div>' +
     '<div class="opts" style="grid-template-columns:repeat(7,minmax(0,1fr))">';
   for (let k = 1; k <= 7; k++) h += '<button class="opt' + (k === cur ? ' on' : '') + '" data-days="' + k + '" style="height:96px"><span style="font-size:34px">' + k + '</span><span>' + (k === 1 ? 'Tag' : 'Tage') + '</span></button>';
-  h += '</div><div class="muted">Die Einstellung gilt für dieses Gerät.</div>';
+  h += '</div><div class="muted">Die Einstellung gilt für dieses Gerät.</div>' +
+    '<h2 style="margin-top:24px">Konto</h2><div class="row" style="font-size:18px"><span style="width:14px;height:14px;border-radius:7px;background:' + (online ? '#3E8E52' : '#B5AB9A') + '"></span>' + (online ? 'Angemeldet – Daten sind auf allen Geräten gleich.' : 'Nicht angemeldet – Daten nur auf diesem Gerät.') +
+    (online ? '<button class="pill-btn" id="logoutBtn" style="margin-left:auto">Abmelden</button>' : '') + '</div>';
   el.innerHTML = h;
-  el.querySelectorAll('[data-days]').forEach((b) => b.onclick = () => { S.settings.days = +b.dataset.days; save(); tabAnzeige(el); });
+  const lo = document.getElementById('logoutBtn');
+  if (lo) lo.onclick = async () => { await sb.auth.signOut(); online = false; document.getElementById('layer').innerHTML = ''; showLogin(); };
+  el.querySelectorAll('[data-days]').forEach((b) => b.onclick = () => { S.settings.days = +b.dataset.days; cache(); tabAnzeige(el); });
 }
 
 // ---------- Start ----------
 window.addEventListener('resize', render);
 setInterval(render, 60000);
+setInterval(loadRemote, 5 * 60000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadRemote(); });
 render();
+startSync();
 })();
 </script>
 </body>
