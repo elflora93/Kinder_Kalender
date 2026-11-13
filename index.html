@@ -290,12 +290,24 @@ async function fetchGoogle() {
   if (!sb || !online) return;
   try {
     const { data, error } = await sb.functions.invoke('google-kalender');
-    if (error || !data || data.error) { G.error = (data && data.error) || 'nicht erreichbar'; }
+    if (error) {
+      let msg = error.message || 'nicht erreichbar';
+      try {
+        const res = error.context;
+        if (res && res.status) {
+          msg = 'Fehler ' + res.status;
+          const body = await res.clone().json().catch(() => null);
+          const t = body && (body.error || body.msg || body.message);
+          if (t) msg += ': ' + t;
+        }
+      } catch (e) { /* keine Details */ }
+      G.error = msg;
+    } else if (!data || data.error) { G.error = (data && data.error) || 'keine Daten'; }
     else {
       G = { events: data.events || [], at: new Date(), error: null };
       try { localStorage.setItem(GKEY, JSON.stringify({ events: G.events, at: G.at })); } catch (e) { /* voll */ }
     }
-  } catch (e) { G.error = 'nicht erreichbar'; }
+  } catch (e) { G.error = 'nicht erreichbar: ' + (e && e.message ? e.message : e); }
   render();
 }
 const SYM_ACT = () => Object.keys(SYM).filter((k) => !SYM[k].person);
