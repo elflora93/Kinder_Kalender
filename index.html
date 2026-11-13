@@ -156,10 +156,38 @@ const SYM = {
 const KITA_PATH = '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>';
 const HOUSE_X = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5B6573" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Kita zu">' + KITA_PATH + '<path d="M3 3l18 18" stroke="#D6453D" stroke-width="2.5"/></svg>';
 const CASE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C86A12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Urlaub"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M8 7v13M16 7v13"/></svg>';
+const DAYTYPES = {
+  Urlaub: { label: 'Urlaub', special: 'urlaub', icon: () => CASE },
+  KitaZu: { label: 'Kita zu', special: 'kita', icon: () => HOUSE_X }
+};
 const STAR = '<svg class="star" width="24" height="24" viewBox="0 0 24 24" fill="#FFD866" stroke="#C9851B" stroke-width="1.5" stroke-linejoin="round" aria-label="Von Nora eingetragen"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
 
+const ICONS = {
+  stern: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  ball: '<circle cx="12" cy="12" r="9"/><path d="M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18M3 12h18"/>',
+  musik: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  buch: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M19 19v2H6"/>',
+  tier: '<circle cx="7" cy="9" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="17" cy="9" r="2"/><path d="M8 16c0-2.5 2-4.5 4-4.5s4 2 4 4.5c0 2-1.8 3-4 3s-4-1-4-3z"/>',
+  fahrrad: '<circle cx="6" cy="16" r="4"/><circle cx="18" cy="16" r="4"/><path d="M6 16l4-8h5l3 8M10 8l2 8h-6M14 5h3"/>',
+  geburtstag: '<path d="M4 21h16v-8H4z"/><path d="M4 16c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5"/><path d="M12 13V9M12 6.5v.1"/>',
+  auto: '<path d="M3 16v-4l2-5h14l2 5v4z"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M3 12h18"/>',
+  haus: '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/>',
+  herz: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+  malen: '<path d="M14 4l6 6-9 9H5v-6z"/><path d="M12 6l6 6"/>',
+  einkaufen: '<path d="M3 4h2l2.5 11h10L20 7H6.3"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>'
+};
+function symInfo(k) {
+  if (SYM[k]) return Object.assign({ label: k }, SYM[k]);
+  const a = S.acts && S.acts[k];
+  if (a) return { label: a.name, color: a.color, path: ICONS[a.icon] || ICONS.stern, photo: a.photo };
+  return null;
+}
+const symLabel = (k) => { const i = symInfo(k); return i ? i.label : String(k || ''); };
 function symSvg(name, size) {
-  const s = SYM[name];
+  const s = symInfo(name);
+  if (!s) return '<div style="width:' + size + 'px;height:' + size + 'px;flex-shrink:0;border-radius:10px;background:#FFF4E0;color:#C9851B;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:' + Math.round(size * 0.6) + 'px">?</div>';
+  if (s.person) return avatar(s.person, size);
+  if (s.photo) return '<div style="width:' + size + 'px;height:' + size + 'px;flex-shrink:0;border-radius:' + Math.round(size / 5) + 'px;background:' + s.color + ' center/cover no-repeat;background-image:url(' + s.photo + ')"></div>';
   return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + s.path + '</svg>';
 }
 
@@ -207,7 +235,8 @@ function defaults() {
     },
     special: {},
     entries: [],
-    stich: { J: ['Oma'], Schwimmen: ['Schwimmkurs'], Freunde: ['Playdate', 'spielen'] },
+    stich: { J: ['Oma'], Schwimmen: ['Schwimmkurs'], Freunde: ['Playdate', 'spielen'], Urlaub: ['Ferien'], KitaZu: ['Schließtag', 'Kita geschlossen'] },
+    acts: {},
     settings: { days: 3 }
   };
 }
@@ -216,12 +245,13 @@ try { S = JSON.parse(localStorage.getItem(KEY)) || defaults(); } catch (e) { S =
 S.settings = S.settings || { days: 3 };
 S.over = S.over || {};
 S.stich = S.stich || { J: ['Oma'], Schwimmen: ['Schwimmkurs'], Freunde: ['Playdate', 'spielen'] };
+S.acts = S.acts || {};
 const kitaZeit = () => (S.week && S.week.kita) || { von: 420, bis: 900 };
 
 // ---------- Supabase ----------
 const SUPABASE_URL = 'https://zybcckfhjmdrrsayrquu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IJZcClgYEFDN2OSPTmGMhQ_ASrXPNlc';
-const PARTS = ['persons', 'week', 'special', 'entries', 'over', 'stich'];
+const PARTS = ['persons', 'week', 'special', 'entries', 'over', 'stich', 'acts'];
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 const synced = {};
 let online = false;
@@ -251,6 +281,7 @@ async function loadRemote() {
   (data || []).forEach((r) => { have[r.schluessel] = true; S[r.schluessel] = r.wert; synced[r.schluessel] = JSON.stringify(r.wert); });
   S.over = S.over || {};
   S.stich = S.stich || {};
+  S.acts = S.acts || {};
   cache();
   // Beim allerersten Start die Beispieldaten hochladen
   if (PARTS.some((p) => !have[p])) save();
@@ -310,9 +341,9 @@ async function fetchGoogle() {
   } catch (e) { G.error = 'nicht erreichbar: ' + (e && e.message ? e.message : e); }
   render();
 }
-const SYM_ACT = () => Object.keys(SYM).filter((k) => !SYM[k].person);
+const SYM_ACT = () => Object.keys(SYM).filter((k) => !SYM[k].person).concat(Object.keys(S.acts || {}));
 function keywordsFor(key) {
-  const base = S.persons[key] ? [S.persons[key].name] : [key];
+  const base = S.persons[key] ? [S.persons[key].name] : (DAYTYPES[key] ? [DAYTYPES[key].label] : [symLabel(key)]);
   return base.concat((S.stich && S.stich[key]) || []).map((w) => String(w).toLowerCase().trim()).filter(Boolean);
 }
 function matchTitle(title) {
@@ -324,13 +355,19 @@ function matchTitle(title) {
   };
   const person = best(Object.keys(S.persons));
   const sym = best(SYM_ACT());
+  const day = best(Object.keys(DAYTYPES));
   let role = null;
   if (/bring/.test(t)) role = 'bringt';
   else if (/abhol|holt|hol /.test(t)) role = 'abholen';
   else if (/bett|schlaf/.test(t)) role = 'bett';
-  return { person, sym, role };
+  return { person, sym, role, day };
 }
 function googleFor(d) { return G.events.filter((e) => e.date === iso(d)); }
+function specialOf(d) {
+  if (S.special[iso(d)]) return S.special[iso(d)];
+  for (const g of googleFor(d)) { const m = matchTitle(g.title); if (m.day) return DAYTYPES[m.day].special; }
+  return null;
+}
 
 async function startSync() {
   if (!sb) { toast('Keine Verbindung zum Server. Es wird nur auf diesem Gerät gespeichert.'); return; }
@@ -356,7 +393,7 @@ function avatar(k, size) {
 
 // ---------- Tagesinhalt ----------
 function itemsFor(d) {
-  const w = wIdx(d), sp = S.special[iso(d)], out = [];
+  const w = wIdx(d), sp = specialOf(d), out = [];
   const kitaDay = w < 5 && !sp;
   const wk = S.week;
   const over = S.over || {};
@@ -373,6 +410,7 @@ function itemsFor(d) {
     const s = Math.max(START, g.start), e = Math.min(END, g.end);
     if (e <= START || s >= END) return;
     const m = matchTitle(g.title);
+    if (m.day) return;
     if (m.person && m.role && !m.sym) { roleOver[m.role] = { id: 'g:' + g.uid, google: true, title: g.title, s, e: Math.max(e, s + 30), person: m.person }; return; }
     gItems.push({ id: 'g:' + g.uid, google: true, title: g.title, s, e: Math.max(e, s + 30), person: m.sym ? null : m.person, withPerson: m.sym ? m.person : null, sym: m.sym, unknown: !m.person && !m.sym });
   });
@@ -428,14 +466,14 @@ function render() {
 
   let html = '<div></div>';
   days.forEach((d) => {
-    const sp = S.special[iso(d)], we = d.getDay() === 0 || d.getDay() === 6;
+    const sp = specialOf(d), we = d.getDay() === 0 || d.getDay() === 6;
     const cls = isToday(d) ? 'today' : (sp || '');
     const icon = sp === 'kita' ? HOUSE_X : (sp === 'urlaub' ? CASE : '');
     const tag = isToday(d) ? '<span class="tag today">HEUTE</span>' : (we ? '<span class="tag we">Wochenende</span>' : '');
     const dname = compact ? DAYS_SHORT[d.getDay()] : DAYS_LONG[d.getDay()];
     const ddate = compact ? d.getDate() + '.' + (d.getMonth() + 1) + '.' : d.getDate() + '. ' + MONTHS[d.getMonth()];
     const tagC = compact ? (isToday(d) ? '<span class="tag today">HEUTE</span>' : '') : tag;
-    const allDay = googleFor(d).filter((g) => g.allDay).map((g) => esc(g.title)).join(', ');
+    const allDay = googleFor(d).filter((g) => g.allDay && !matchTitle(g.title).day).map((g) => esc(g.title)).join(', ');
     const dateLine = allDay ? ddate + ' · <b>' + allDay + '</b>' : ddate;
     html += '<div class="dayhead ' + cls + '" style="' + (compact ? 'padding:0 8px' : '') + '"><div style="display:flex;flex-direction:column;min-width:0"><span class="name">' + dname + ' ' + icon + '</span><span class="date" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + dateLine + '</span></div>' + tagC + '</div>';
   });
@@ -453,7 +491,7 @@ function render() {
   html += tc;
 
   days.forEach((d, i) => {
-    const sp = S.special[iso(d)], w = wIdx(d);
+    const sp = specialOf(d), w = wIdx(d);
     const cls = isToday(d) ? 'today' : (sp || '');
     let col = '<div class="day ' + cls + '" data-i="' + i + '">';
     if (sp !== 'urlaub') {
@@ -486,13 +524,13 @@ function render() {
         border = S.persons[it.person].color;
         inner = avatar(it.person, isz(56, 40, 28)) + '<span class="lbl"' + lblStyle + '>' + esc(compact ? S.persons[it.person].name : it.text) + '</span>';
       } else {
-        const s = SYM[it.sym];
+        const s = symInfo(it.sym) || { color: '#C9851B' };
         if (s.person) {
           border = S.persons[s.person].color;
           inner = avatar(s.person, isz(56, 40, 28)) + '<span class="lbl"' + lblStyle + '>' + esc(S.persons[s.person].name) + '</span>';
         } else {
           border = s.color;
-          inner = symSvg(it.sym, isz(52, 38, 26)) + '<span class="lbl"' + lblStyle + '>' + it.sym + '</span>';
+          inner = symSvg(it.sym, isz(52, 38, 26)) + '<span class="lbl"' + lblStyle + '>' + esc(symLabel(it.sym)) + '</span>';
           if (it.withPerson && S.persons[it.withPerson] && !tiny) inner += avatar(it.withPerson, isz(40, 30, 24));
         }
       }
@@ -548,9 +586,8 @@ function openPicker(day, startM) {
   const layer = $('layer');
   function draw() {
     let tiles = '';
-    Object.keys(SYM).forEach((k) => {
-      const ic = SYM[k].person ? avatar(SYM[k].person, 72) : symSvg(k, 72);
-      tiles += '<button class="tile' + (picked === k ? ' on' : '') + '" data-k="' + k + '">' + ic + '<span>' + k + '</span></button>';
+    Object.keys(SYM).concat(Object.keys(S.acts || {})).forEach((k) => {
+      tiles += '<button class="tile' + (picked === k ? ' on' : '') + '" data-k="' + k + '">' + symSvg(k, 72) + '<span>' + esc(symLabel(k)) + '</span></button>';
     });
     const dur = e - s, dh = Math.floor(dur / 60), dm = dur % 60;
     const durT = (dh ? dh + (dh === 1 ? ' Stunde' : ' Stunden') : '') + (dh && dm ? ' ' : '') + (dm ? dm + ' Minuten' : '');
@@ -595,8 +632,8 @@ function openEdit(day, it) {
   const layer = $('layer');
   let icon, label;
   if (it.person) { icon = avatar(it.person, 64); label = it.text; }
-  else if (SYM[it.sym].person) { icon = avatar(SYM[it.sym].person, 64); label = S.persons[SYM[it.sym].person].name; }
-  else { icon = symSvg(it.sym, 64); label = it.sym; }
+  else if (symInfo(it.sym) && symInfo(it.sym).person) { icon = avatar(symInfo(it.sym).person, 64); label = S.persons[symInfo(it.sym).person].name; }
+  else { icon = symSvg(it.sym, 64); label = symLabel(it.sym); }
   function draw() {
     const dur = e - s, dh = Math.floor(dur / 60), dm = dur % 60;
     const durT = (dh ? dh + (dh === 1 ? ' Stunde' : ' Stunden') : '') + (dh && dm ? ' ' : '') + (dm ? dm + ' Minuten' : '');
@@ -683,13 +720,13 @@ function openGate() {
 let tab = 'personen';
 function openParent() {
   const layer = $('layer');
-  const tabs = [['personen', 'Personen'], ['woche', 'Standard-Woche'], ['besondere', 'Besondere Tage'], ['eintraege', 'Noras Einträge'], ['google', 'Google-Kalender'], ['anzeige', 'Anzeige']];
+  const tabs = [['personen', 'Personen'], ['aktivitaeten', 'Aktivitäten'], ['woche', 'Standard-Woche'], ['besondere', 'Besondere Tage'], ['eintraege', 'Noras Einträge'], ['google', 'Google-Kalender'], ['anzeige', 'Anzeige']];
   layer.innerHTML = '<div class="parent"><nav class="side"><div class="brand">Eltern-Bereich</div>' +
     tabs.map(([k, l]) => '<button data-t="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + l + '</button>').join('') +
     '<button class="back" id="backBtn">‹ Zurück zu Nora</button></nav><div class="main" id="pmain"></div></div>';
   layer.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { tab = b.dataset.t; openParent(); });
   $('backBtn').onclick = () => { layer.innerHTML = ''; render(); };
-  ({ personen: tabPersonen, woche: tabWoche, besondere: tabBesondere, eintraege: tabEintraege, google: tabGoogle, anzeige: tabAnzeige })[tab]($('pmain'));
+  ({ personen: tabPersonen, aktivitaeten: tabAktivitaeten, woche: tabWoche, besondere: tabBesondere, eintraege: tabEintraege, google: tabGoogle, anzeige: tabAnzeige })[tab]($('pmain'));
 }
 
 function tabPersonen(el) {
@@ -743,6 +780,65 @@ function tabPersonen(el) {
   });
 }
 
+function resizePhoto(file, done) {
+  const url = URL.createObjectURL(file), img = new Image();
+  img.onload = () => {
+    const size = 240, c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const s = Math.min(img.width, img.height);
+    c.getContext('2d').drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+    URL.revokeObjectURL(url);
+    done(c.toDataURL('image/jpeg', 0.8));
+  };
+  img.src = url;
+}
+
+function tabAktivitaeten(el) {
+  let h = '<h2>Aktivitäten</h2><div class="muted" style="font-size:18px">Diese Bilder kann Nora beim Eintragen auswählen. Eigene Aktivitäten bekommen ein Symbol oder ein Foto.</div><div class="cards3">';
+  Object.keys(SYM).forEach((k) => {
+    h += '<div class="pcard" style="align-items:center;text-align:center">' + symSvg(k, 72) + '<span style="font-size:22px;font-weight:700">' + esc(symLabel(k)) + '</span><span class="muted" style="font-size:14px">fest eingebaut</span></div>';
+  });
+  Object.keys(S.acts).forEach((k) => {
+    const a = S.acts[k];
+    h += '<div class="pcard">' + symSvg(k, 72) +
+      '<input type="text" data-aname="' + k + '" value="' + esc(a.name) + '">' +
+      '<div class="swatches">' + COLORS.map((c) => '<span class="sw' + (c === a.color ? ' on' : '') + '" data-ac="' + c + '" data-k="' + k + '" style="background:' + c + '"></span>').join('') + '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px">' + Object.keys(ICONS).map((ic) =>
+        '<button data-ai="' + ic + '" data-k="' + k + '" aria-label="' + ic + '" style="height:44px;border-radius:10px;cursor:pointer;background:#fff;border:' + (!a.photo && a.icon === ic ? '3px solid #2A2A33' : '2px solid #E2DBCF') + '"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="' + a.color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICONS[ic] + '</svg></button>').join('') + '</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap"><label class="filebtn">Foto statt Symbol<input type="file" accept="image/*" data-aphoto="' + k + '"></label>' +
+      (a.photo ? '<button class="pill-btn" data-aphotodel="' + k + '">Foto entfernen</button>' : '') + '</div>' +
+      '<button class="pill-btn" data-arm="' + k + '" style="color:#B3342D;align-self:flex-start">Aktivität löschen</button></div>';
+  });
+  h += '<button class="pcard" id="addAct" style="border:3px dashed #C9BFAE;background:transparent;align-items:center;justify-content:center;min-height:220px;cursor:pointer;font-size:22px;font-weight:700;color:#4A463F">' +
+    '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#7A7468" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Aktivität anlegen</button></div>';
+  el.innerHTML = h;
+  const upd = () => { save(); render(); tabAktivitaeten(el); };
+  $('addAct').onclick = () => {
+    S.acts['a' + Date.now()] = { name: 'Neue Aktivität', color: COLORS[3], icon: 'stern', photo: null };
+    upd();
+    const inputs = el.querySelectorAll('[data-aname]');
+    const last = inputs[inputs.length - 1];
+    if (last) { last.focus(); last.select(); }
+  };
+  el.querySelectorAll('[data-aname]').forEach((i) => i.onchange = () => { S.acts[i.dataset.aname].name = i.value.trim() || 'Aktivität'; save(); render(); });
+  el.querySelectorAll('[data-ac]').forEach((s) => s.onclick = () => { S.acts[s.dataset.k].color = s.dataset.ac; upd(); });
+  el.querySelectorAll('[data-ai]').forEach((b) => b.onclick = () => { S.acts[b.dataset.k].icon = b.dataset.ai; S.acts[b.dataset.k].photo = null; upd(); });
+  el.querySelectorAll('[data-aphotodel]').forEach((b) => b.onclick = () => { S.acts[b.dataset.aphotodel].photo = null; upd(); });
+  el.querySelectorAll('[data-aphoto]').forEach((inp) => inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (f) resizePhoto(f, (data) => { S.acts[inp.dataset.aphoto].photo = data; upd(); });
+  });
+  el.querySelectorAll('[data-arm]').forEach((b) => b.onclick = () => {
+    const k = b.dataset.arm;
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Wirklich löschen?'; b.style.background = '#D6453D'; b.style.color = '#fff'; return; }
+    delete S.acts[k];
+    if (S.stich) delete S.stich[k];
+    S.week.nachm = S.week.nachm.map((v) => v === k ? null : v);
+    S.entries = S.entries.filter((x) => x.sym !== k);
+    upd();
+  });
+}
+
 function tabWoche(el) {
   const rows = [['bringt', 'Bringt'], ['abholen', 'Holt ab'], ['nachm', 'Nachmittag'], ['bett', 'Ins Bett']];
   const wd = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -754,7 +850,7 @@ function tabWoche(el) {
       let inner = '<span style="font-size:22px;color:#C9BFAE">+</span>';
       if (i >= 5 && (key === 'bringt' || key === 'abholen')) inner = '<span style="font-size:22px;color:#B5AB9A">–</span>';
       if (v && S.persons[v]) inner = avatar(v, 44);
-      else if (v && SYM[v]) inner = SYM[v].person ? avatar(SYM[v].person, 44) : symSvg(v, 36);
+      else if (v && symInfo(v)) inner = symSvg(v, 36);
       h += '<button class="cell" data-k="' + key + '" data-i="' + i + '"' + (i >= 5 ? ' style="background:#F7FBF7"' : '') + '>' + inner + '</button>';
     });
   });
@@ -779,7 +875,7 @@ function tabWoche(el) {
     const label = rows.find((r) => r[0] === key)[1];
     const cur = S.week[key][i];
     const opts = key === 'nachm'
-      ? Object.keys(SYM).filter((k) => !SYM[k].person).map((k) => [k, symSvg(k, 44), k])
+      ? SYM_ACT().map((k) => [k, symSvg(k, 44), symLabel(k)])
       : Object.keys(S.persons).map((k) => [k, avatar(k, 52), S.persons[k].name]);
     opts.push([null, '<span style="font-size:34px;color:#B5AB9A;line-height:52px">–</span>', key === 'nachm' ? 'Nichts' : 'Niemand']);
     choose('Jede Woche', ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][i] + ' · ' + label, opts, cur, (v) => { S.week[key][i] = v; save(); tabWoche(el); });
@@ -835,8 +931,8 @@ function tabEintraege(el) {
   if (!list.length) h += '<div class="row muted" style="font-size:18px">Noch keine Einträge.</div>';
   list.forEach((x) => {
     const d = new Date(x.date + 'T00:00:00');
-    const ic = SYM[x.sym].person ? avatar(SYM[x.sym].person, 40) : symSvg(x.sym, 36);
-    h += '<div class="row">' + ic + '<div style="flex:1"><div style="font-size:19px;font-weight:700">' + x.sym + '</div><div class="muted">' + DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + '. ' + MONTHS[d.getMonth()] + ' · ' + fmt(x.start) + ' bis ' + fmt(x.end) + ' Uhr</div></div>' +
+    const ic = symSvg(x.sym, 36);
+    h += '<div class="row">' + ic + '<div style="flex:1"><div style="font-size:19px;font-weight:700">' + esc(symLabel(x.sym)) + '</div><div class="muted">' + DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + '. ' + MONTHS[d.getMonth()] + ' · ' + fmt(x.start) + ' bis ' + fmt(x.end) + ' Uhr</div></div>' +
       '<button class="pill-btn" data-del="' + x.id + '">Löschen</button></div>';
   });
   h += '<div style="margin-top:20px"><button class="pill-btn" id="resetBtn">Alles auf Beispieldaten zurücksetzen</button></div>';
@@ -858,7 +954,7 @@ function tabGoogle(el) {
         : 'Keine Verbindung' + (G.error ? ' (' + esc(G.error) + ')' : '') + '. Ist die Funktion in Supabase eingerichtet und ICAL_URL eingetragen?') + '</div>';
   // Nicht erkannte Termine (jeder Titel einmal)
   const seen = {}, unknown = [];
-  G.events.forEach((g) => { const m = matchTitle(g.title); if (!m.person && !m.sym && !seen[g.title]) { seen[g.title] = 1; unknown.push(g); } });
+  G.events.forEach((g) => { const m = matchTitle(g.title); if (!m.person && !m.sym && !m.day && !seen[g.title]) { seen[g.title] = 1; unknown.push(g); } });
   h += '<h2 style="font-size:24px;margin-top:6px">Nicht erkannt (' + unknown.length + ')</h2>';
   if (!unknown.length) h += '<div class="row muted" style="font-size:18px">Alle Termine haben ein Bild.</div>';
   unknown.forEach((g, i) => {
@@ -868,8 +964,8 @@ function tabGoogle(el) {
       '<button class="pill-btn" data-assign="' + i + '" style="background:#2F6FB0;color:#fff;border-color:#2F6FB0">Zuordnen</button></div>';
   });
   // Stichwörter
-  h += '<h2 style="font-size:24px;margin-top:6px">Stichwörter</h2><div class="muted">Steht eines dieser Wörter im Termin, bekommt er das passende Bild. Namen gelten immer automatisch.</div>';
-  const targets = Object.keys(S.persons).map((k) => [k, avatar(k, 36), S.persons[k].name]).concat(SYM_ACT().map((k) => [k, symSvg(k, 32), k]));
+  h += '<h2 style="font-size:24px;margin-top:6px">Stichwörter</h2><div class="muted">Steht eines dieser Wörter im Termin, bekommt er das passende Bild. Namen gelten immer automatisch. „Urlaub“ und „Kita zu“ markieren den ganzen Tag.</div>';
+  const targets = Object.keys(S.persons).map((k) => [k, avatar(k, 36), S.persons[k].name]).concat(SYM_ACT().map((k) => [k, symSvg(k, 32), symLabel(k)])).concat(Object.keys(DAYTYPES).map((k) => [k, DAYTYPES[k].icon(), DAYTYPES[k].label + ' (ganzer Tag)']));
   targets.forEach(([k, ic, label]) => {
     const words = (S.stich && S.stich[k]) || [];
     h += '<div class="row" style="flex-wrap:wrap">' + ic + '<span style="font-size:18px;font-weight:700;min-width:110px">' + esc(label) + '</span>' +
