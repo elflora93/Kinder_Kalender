@@ -415,7 +415,7 @@ function itemsFor(d) {
     gItems.push({ id: 'g:' + g.uid, google: true, title: g.title, s, e: Math.max(e, s + 30), person: m.sym ? null : m.person, withPerson: m.sym ? m.person : null, sym: m.sym, unknown: !m.person && !m.sym });
   });
   const roleText = { bringt: ' bringt', abholen: ' holt ab', bett: ': ins Bett' };
-  Object.keys(roleOver).forEach((r) => { const o = roleOver[r]; o.text = P(o.person).name + roleText[r]; out.push(o); });
+  Object.keys(roleOver).forEach((r) => { const o = roleOver[r]; o.text = P(o.person).name + roleText[r]; o.slot = r; out.push(o); });
   const realStd = std;
   const stdG = (slot, s, e, extra) => { if (!roleOver[slot]) realStd(slot, s, e, extra); };
   if (kitaDay && P(wk.bringt[w])) stdG('bringt', kz.von - 60, kz.von, { person: wk.bringt[w], text: P(wk.bringt[w]).name + ' bringt' });
@@ -428,6 +428,9 @@ function itemsFor(d) {
   if (P(wk.bett[w])) stdG('bett', 1140, 1200, { person: wk.bett[w], text: P(wk.bett[w]).name + ': ins Bett' });
   S.entries.filter((x) => x.date === iso(d)).forEach((x) => out.push({ id: 'e:' + x.id, s: x.start, e: x.end, sym: x.sym, own: true }));
   gItems.forEach((g) => out.push(g));
+  // Lange Termine enden vor der Bettzeit, statt daneben zu stehen
+  const bett = out.find((it) => it.slot === 'bett');
+  if (bett) out.forEach((it) => { if (it !== bett && it.s < bett.s && it.e > bett.s) it.e = bett.s; });
   // Spalten bei Überschneidung
   out.sort((a, b) => a.s - b.s || (b.e - b.s) - (a.e - a.s));
   const lanesEnd = [];
