@@ -431,6 +431,9 @@ function itemsFor(d) {
   // Lange Termine enden vor der Bettzeit, statt daneben zu stehen
   const bett = out.find((it) => it.slot === 'bett');
   if (bett) out.forEach((it) => { if (it !== bett && it.s < bett.s && it.e > bett.s) it.e = bett.s; });
+  // … und beginnen erst nach dem Bringen
+  const bringt = out.find((it) => it.slot === 'bringt');
+  if (bringt) out.forEach((it) => { if (it !== bringt && !it.kita && it.s < bringt.e && it.e > bringt.e && it.s <= bringt.s) it.s = bringt.e; });
   // Spalten bei Überschneidung
   out.sort((a, b) => a.s - b.s || (b.e - b.s) - (a.e - a.s));
   const lanesEnd = [];
