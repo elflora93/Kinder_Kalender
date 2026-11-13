@@ -146,7 +146,7 @@ Deno.serve(async (req: Request) => {
       spanDays = dayNum(e.y, e.m, e.d) - startDay;
       endMin = e.min;
       if (start.allDay) spanDays = Math.max(1, spanDays);
-      else if (spanDays > 0) { endMin = 1440; spanDays = 0; }
+      else if (spanDays > 0 && endMin === 0) { spanDays -= 1; endMin = 1440; } // endet genau um Mitternacht
     } else if (start.allDay) spanDays = 1;
 
     const rid = get("RECURRENCE-ID");
@@ -183,8 +183,16 @@ Deno.serve(async (req: Request) => {
           const dd = day + k;
           if (dd >= winStart && dd <= winEnd) out.push({ uid: uid + "|" + dd, title, date: isoDate(dd), allDay: true });
         }
-      } else if (day >= winStart && day <= winEnd) {
-        out.push({ uid: uid + "|" + day, title, date: isoDate(day), start: start.min, end: Math.max(endMin, start.min + 15), allDay: false });
+      } else {
+        // Termin mit Uhrzeit, ggf. über mehrere Tage: ein Stück pro Tag
+        for (let k = 0; k <= spanDays; k++) {
+          const dd = day + k;
+          if (dd < winStart || dd > winEnd) continue;
+          const s = k === 0 ? start.min : 0;
+          const e = k === spanDays ? endMin : 1440;
+          if (e <= s && spanDays > 0) continue;
+          out.push({ uid: uid + "|" + dd, title, date: isoDate(dd), start: s, end: spanDays > 0 ? e : Math.max(e, s + 15), allDay: false });
+        }
       }
     }
   }
