@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Noras Kalender – Prototyp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FBF8F3; --ink: #2A2A33; --muted: #5E5A52; --line: #E2DBCF; --soft: #F1ECE3;
+    --sun: #FFD866; --red: #D6453D; --blue: #2F6FB0; --green: #3E8E52;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: Andika, system-ui, sans-serif; overscroll-behavior: none; }
+  body { -webkit-user-select: none; user-select: none; }
+  button { font-family: inherit; color: inherit; }
+  #app { height: 100dvh; display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
+
+  /* Kopf */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; }
+  .top h1 { margin: 0; font-size: clamp(26px, 3.4vw, 40px); display: flex; align-items: center; gap: 12px; }
+  .nav { display: flex; align-items: center; gap: 10px; }
+  .round { width: 56px; height: 56px; border-radius: 28px; border: 2px solid var(--line); background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .pill-btn { height: 48px; padding: 0 18px; border-radius: 24px; border: 2px solid var(--line); background: #fff; font-size: 18px; font-weight: 700; cursor: pointer; }
+  .lock { width: 44px; height: 44px; border: none; background: transparent; margin-left: 8px; cursor: pointer; opacity: .6; }
+
+  /* Raster */
+  .grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 70px repeat(3, minmax(0, 1fr)); grid-template-rows: 60px 1fr; column-gap: 12px; row-gap: 8px; touch-action: pan-y; }
+  .dayhead { display: flex; align-items: center; justify-content: space-between; padding: 0 14px; border-radius: 16px; background: #fff; border: 2px solid var(--line); }
+  .dayhead .name { font-size: clamp(20px, 2.2vw, 26px); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .dayhead .date { font-size: 15px; color: var(--muted); }
+  .dayhead.today { background: var(--sun); border-color: var(--sun); }
+  .dayhead.today .date { color: var(--ink); }
+  .dayhead.kita { background: #EEF0F3; border-color: #8C97A6; }
+  .dayhead.urlaub { background: #FFE3C7; border-color: #F0A04B; }
+  .tag { font-size: 14px; font-weight: 700; padding: 5px 10px; border-radius: 999px; }
+  .tag.today { background: var(--ink); color: #fff; }
+  .tag.we { background: #E3F2E5; color: #3E7A4E; }
+
+  .timecol { position: relative; }
+  .timecol .h { position: absolute; right: 0; font-size: 15px; font-weight: 700; color: var(--muted); transform: translateY(-50%); }
+  .timecol .scene { position: absolute; left: -4px; }
+  .timecol .now { position: absolute; left: -4px; height: 24px; padding: 0 7px; border-radius: 12px; background: var(--red); color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; transform: translateY(-50%); }
+
+  .day { position: relative; border-radius: 16px; border: 2px solid var(--line); background: #fff; overflow: hidden; cursor: pointer; }
+  .day.today { border: 4px solid var(--sun); box-shadow: 0 6px 20px rgba(224,164,34,.25); }
+  .day.kita { border-color: #8C97A6; }
+  .day.urlaub { border-color: #F0A04B; background: #FFF4E8; }
+  .band { position: absolute; left: 0; right: 0; pointer-events: none; }
+  .hourlines { position: absolute; inset: 0; pointer-events: none; }
+  .nowline { position: absolute; left: 0; right: 0; height: 4px; background: var(--red); pointer-events: none; z-index: 5; }
+  .nowdot { position: absolute; left: -2px; width: 16px; height: 16px; border-radius: 8px; background: var(--red); transform: translateY(-6px); pointer-events: none; z-index: 5; }
+
+  .card { position: absolute; display: flex; align-items: center; gap: 10px; padding: 0 10px; background: #fff; border: 3px solid #ccc; border-radius: 12px; overflow: hidden; z-index: 2; cursor: default; }
+  .card .lbl { font-size: clamp(16px, 1.7vw, 21px); font-weight: 700; line-height: 1.1; }
+  .card.tall { flex-direction: column; justify-content: center; text-align: center; gap: 6px; }
+  .card.kitablock { background: rgba(255,255,255,.6); border: 2px dashed #8DB5DA; color: var(--blue); z-index: 1; }
+  .card .star { margin-left: auto; flex-shrink: 0; }
+  .card.tall .star { position: absolute; top: 6px; right: 6px; margin: 0; }
+  .av { flex-shrink: 0; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; background-size: cover; background-position: center; }
+
+  /* Overlays */
+  .overlay { position: fixed; inset: 0; background: rgba(42,42,51,.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+  .sheet { background: #fff; border-radius: 28px; box-shadow: 0 20px 60px rgba(0,0,0,.25); padding: 28px 32px; width: min(780px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 20px; }
+  .sheet h2 { margin: 0; font-size: 34px; }
+  .sub { font-size: 18px; color: var(--muted); }
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .tile { height: 150px; border-radius: 20px; border: 3px solid var(--line); background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; font-size: 22px; font-weight: 700; }
+  .tile.on { border: 5px solid #E0A422; background: #FFF6D6; }
+  .done-btn { align-self: center; width: 300px; height: 76px; border-radius: 38px; border: none; background: var(--green); color: #fff; font-size: 28px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; }
+  .done-btn:disabled { opacity: .35; }
+  .timerow { display: flex; align-items: center; gap: 28px; padding: 14px 18px; background: #F6F2EB; border-radius: 16px; flex-wrap: wrap; }
+  .step { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; }
+  .step button { width: 44px; height: 44px; border-radius: 22px; border: 2px solid var(--line); background: #fff; font-size: 24px; font-weight: 700; cursor: pointer; }
+  .step .val { width: 64px; text-align: center; font-size: 22px; }
+
+  /* Eltern */
+  .parent { position: fixed; inset: 0; background: var(--bg); z-index: 40; display: flex; }
+  .side { width: 240px; flex-shrink: 0; background: #F1ECE3; padding: 22px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .side .brand { font-size: 22px; font-weight: 700; padding: 0 8px 16px; }
+  .side button { height: 52px; border-radius: 12px; border: none; background: transparent; text-align: left; padding: 0 14px; font-size: 19px; font-weight: 700; color: #4A463F; cursor: pointer; }
+  .side button.on { background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(42,42,51,.08); }
+  .side .back { margin-top: auto; border: 2px solid #D9D1C3; }
+  .main { flex: 1; min-width: 0; overflow: auto; padding: 26px 30px; display: flex; flex-direction: column; gap: 18px; }
+  .main h2 { margin: 0; font-size: 32px; }
+  .cards3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
+  .pcard { background: #fff; border: 2px solid #E7E1D8; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .pcard input[type=text] { font-family: inherit; font-size: 22px; font-weight: 700; border: 2px solid var(--line); border-radius: 10px; padding: 6px 10px; width: 100%; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sw { width: 32px; height: 32px; border-radius: 16px; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
+  .sw.on { border: 3px solid var(--ink); }
+  .filebtn { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 16px; border-radius: 22px; background: var(--ink); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .wk { display: grid; grid-template-columns: 120px repeat(7, minmax(0, 1fr)); gap: 8px; align-items: center; }
+  .wk .hd { height: 44px; border-radius: 10px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 700; }
+  .wk .hd.we { background: #E3F2E5; color: #3E7A4E; }
+  .wk .rl { font-size: 18px; font-weight: 700; }
+  .wk .cell { height: 84px; border-radius: 12px; border: 2px solid #E7E1D8; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .opts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .opt { height: 112px; border-radius: 16px; border: 2px solid var(--line); background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-size: 17px; font-weight: 700; cursor: pointer; }
+  .opt.on { border: 4px solid #E0A422; background: #FFF6D6; }
+  .month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .month .wd { text-align: center; font-size: 15px; font-weight: 700; color: var(--muted); }
+  .month .d { height: 62px; border-radius: 12px; border: 2px solid #EFEAE1; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; cursor: pointer; }
+  .modes { display: flex; gap: 10px; flex-wrap: wrap; }
+  .modes button { flex: 1; min-width: 150px; height: 52px; border-radius: 14px; border: 2px solid var(--line); font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+  .modes button.on { border: 3px solid var(--ink); }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #fff; border: 2px solid #E7E1D8; border-radius: 14px; }
+  .muted { color: var(--muted); }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 300px; align-self: center; }
+  .keypad button { height: 64px; border-radius: 16px; border: 2px solid var(--line); background: #fff; font-size: 26px; font-weight: 700; cursor: pointer; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <h1 id="title"></h1>
+    <div class="nav">
+      <button class="pill-btn hidden" id="todayBtn">Heute</button>
+      <button class="round" id="prevBtn" aria-label="Frühere Tage"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="round" id="nextBtn" aria-label="Spätere Tage"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button class="lock" id="lockBtn" aria-label="Eltern-Bereich"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7A7468" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+<div id="layer"></div>
+
+<script>
+(function () {
+'use strict';
+
+// ---------- Grunddaten ----------
+const START = 360, END = 1200; // 6:00 bis 20:00
+const DAYS_LONG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+const DAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+const COLORS = ['#E07A3F', '#2F6FB0', '#8A5BB0', '#2A9D9A', '#5E9A5E', '#D6453D', '#C9851B', '#5B6573'];
+
+const SYM = {
+  Freunde:   { color: '#C9851B', path: '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M14 14.3A6 6 0 0 1 22 20"/>' },
+  Oma:       { person: 'J' },
+  Garten:    { color: '#5E9A5E', path: '<path d="M12 21v-9"/><path d="M12 12C12 8 9 6 5 6c0 4 3 6 7 6z"/><path d="M12 10c0-3 2.5-5 6-5 0 3.5-2.5 5-6 5z"/><path d="M6 21h12"/>' },
+  Schwimmen: { color: '#2A9D9A', path: '<path d="M2 18c2 0 2-1.5 4-1.5S8 18 10 18s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="16" cy="6" r="2"/><path d="M5 13l4-4 3 2 3-2"/>' },
+  Arzt:      { color: '#2F6FB0', path: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M12 10.5v6M9 13.5h6"/>' },
+  Ausflug:   { color: '#D6453D', path: '<rect x="3" y="5" width="18" height="11" rx="2"/><path d="M3 11h18"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/>' }
+};
+const KITA_PATH = '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>';
+const HOUSE_X = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5B6573" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Kita zu">' + KITA_PATH + '<path d="M3 3l18 18" stroke="#D6453D" stroke-width="2.5"/></svg>';
+const CASE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C86A12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Urlaub"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M8 7v13M16 7v13"/></svg>';
+const STAR = '<svg class="star" width="24" height="24" viewBox="0 0 24 24" fill="#FFD866" stroke="#C9851B" stroke-width="1.5" stroke-linejoin="round" aria-label="Von Nora eingetragen"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
+
+function symSvg(name, size) {
+  const s = SYM[name];
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + s.path + '</svg>';
+}
+
+// Tageszeit-Bilder: Horizont, Haus, Baum; Sonne/Mond wandert
+function scene(kind, w) {
+  const bg = '#FBF8F3', SUN = '#E0A422';
+  const sun = (cx, cy) => {
+    let rays = '';
+    [[0,-1],[0,1],[-1,0],[1,0],[-.7,-.7],[.7,-.7],[-.7,.7],[.7,.7]].forEach(([dx, dy]) => {
+      rays += 'M' + (cx + dx * 5).toFixed(1) + ' ' + (cy + dy * 5).toFixed(1) + 'l' + (dx * 1.4).toFixed(1) + ' ' + (dy * 1.4).toFixed(1);
+    });
+    return '<circle cx="' + cx + '" cy="' + cy + '" r="3.3" stroke="' + SUN + '" fill="#FFE9A8"/><path d="' + rays + '" stroke="' + SUN + '"/>';
+  };
+  const house = '<path d="M19 25v-8h8v8" stroke="#9A6B4A" fill="' + bg + '"/><path d="M17.5 17.5 23 12.5l5.5 5" stroke="#C8553D"/><path d="M22 25v-3.5h2V25" stroke="#9A6B4A"/>';
+  const tree = '<path d="M34 25v-5" stroke="#5E9A5E"/><circle cx="34" cy="15.5" r="4.5" stroke="#5E9A5E" fill="' + bg + '"/>';
+  const ground = '<path d="M1 25h38" stroke="#B5AB9A"/>';
+  let sky = '', extra = '';
+  if (kind === 'morgens') sky = '<path d="M3.5 25a4.5 4.5 0 0 1 9 0" stroke="' + SUN + '" fill="#FFE9A8"/><path d="M8 18.3v-1.8M3.2 20.6l-1.3-1M12.8 20.6l1.3-1" stroke="' + SUN + '"/>';
+  if (kind === 'vormittag') sky = sun(8, 11);
+  if (kind === 'mittag') sky = sun(23, 5.5);
+  if (kind === 'nachmittag') sky = sun(37, 9.5);
+  if (kind === 'abend') {
+    sky = '<path d="M13 4.5a5 5 0 1 0 4 7.5 4 4 0 0 1-4-7.5z" stroke="#6A5ACD" fill="#E4E0F7"/><path d="M5 5.5v1.6M4.2 6.3h1.6M29 4.5v1.6M28.2 5.3h1.6" stroke="#6A5ACD"/>';
+    extra = '<rect x="24.6" y="18.6" width="1.6" height="1.6" fill="#FFD866" stroke="none"/>';
+  }
+  return '<svg width="' + w + '" height="' + Math.round(w * 0.7) + '" viewBox="0 0 40 28" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-label="' + kind + '">' + sky + house + tree + ground + extra + '</svg>';
+}
+
+// ---------- Speicher ----------
+const KEY = 'noraKalender.prototyp.v1';
+function defaults() {
+  return {
+    persons: {
+      M: { name: 'Mama', color: '#E07A3F', photo: null },
+      P: { name: 'Papa', color: '#2F6FB0', photo: null },
+      J: { name: 'Oma Jutta', color: '#8A5BB0', photo: null }
+    },
+    // Index 0 = Montag … 6 = Sonntag
+    week: {
+      bringt:  ['M', 'P', 'M', 'P', 'M', null, null],
+      abholen: ['P', 'J', 'M', 'J', 'J', null, null],
+      nachm:   [null, 'Schwimmen', null, 'Garten', null, null, null],
+      bett:    ['M', 'P', 'M', 'P', 'P', 'M', 'P']
+    },
+    special: {},
+    entries: [],
+    settings: { days: 3 }
+  };
+}
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)) || defaults(); } catch (e) { S = defaults(); }
+S.settings = S.settings || { days: 3 };
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* Speicher voll oder gesperrt */ } }
+
+// ---------- Hilfen ----------
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const wIdx = (d) => (d.getDay() + 6) % 7;
+const fmt = (m) => Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
+function avatar(k, size) {
+  const p = S.persons[k];
+  if (!p) return '';
+  const img = p.photo ? 'background-image:url(' + p.photo + ');' : '';
+  return '<div class="av" style="width:' + size + 'px;height:' + size + 'px;background-color:' + p.color + ';' + img + 'font-size:' + Math.round(size * 0.45) + 'px">' + (p.photo ? '' : esc(p.name.charAt(0))) + '</div>';
+}
+
+// ---------- Tagesinhalt ----------
+function itemsFor(d) {
+  const w = wIdx(d), sp = S.special[iso(d)], out = [];
+  const kitaDay = w < 5 && !sp;
+  const wk = S.week;
+  const over = S.over || {};
+  // Standard-Termin mit Änderung für genau diesen Tag
+  const std = (slot, s, e, extra) => {
+    const o = over[iso(d) + '|' + slot];
+    if (o && o.del) return;
+    out.push(Object.assign({ id: 'w:' + slot, slot, s: o ? o.s : s, e: o ? o.e : e }, extra));
+  };
+  if (kitaDay && wk.bringt[w]) std('bringt', 420, 480, { person: wk.bringt[w], text: S.persons[wk.bringt[w]].name + ' bringt' });
+  if (kitaDay) out.push({ s: 480, e: 840, kita: true });
+  if (kitaDay && wk.abholen[w]) std('abholen', 840, 900, { person: wk.abholen[w], text: S.persons[wk.abholen[w]].name + ' holt ab' });
+  if (wk.nachm[w]) std('nachm', 900, 1020, { sym: wk.nachm[w] });
+  if (wk.bett[w]) std('bett', 1140, 1200, { person: wk.bett[w], text: S.persons[wk.bett[w]].name + ': ins Bett' });
+  S.entries.filter((x) => x.date === iso(d)).forEach((x) => out.push({ id: 'e:' + x.id, s: x.start, e: x.end, sym: x.sym, own: true }));
+  // Spalten bei Überschneidung
+  out.sort((a, b) => a.s - b.s || (b.e - b.s) - (a.e - a.s));
+  const lanesEnd = [];
+  out.forEach((it) => {
+    let l = lanesEnd.findIndex((end) => end <= it.s);
+    if (l < 0) { l = lanesEnd.length; lanesEnd.push(0); }
+    lanesEnd[l] = it.e; it.lane = l;
+  });
+  out.forEach((it) => {
+    let n = 1;
+    out.forEach((o) => { if (o.s < it.e && o.e > it.s) n = Math.max(n, o.lane + 1); });
+    it.lanes = n;
+  });
+  return out;
+}
+
+let offset = 0, ppm = 0.7;
+const itemsCache = [];
+
+function render() {
+  const grid = $('grid');
+  const h = grid.clientHeight - 68;
+  ppm = Math.max(0.4, h / (END - START));
+  const t0 = today0();
+  const n = Math.max(1, Math.min(7, S.settings.days || 3));
+  const days = Array.from({ length: n }, (_, i) => addDays(t0, offset + i));
+  grid.style.gridTemplateColumns = '70px repeat(' + n + ', minmax(0, 1fr))';
+  grid.style.columnGap = n > 4 ? '8px' : '12px';
+  const colW = (grid.clientWidth - 70) / n;
+  const compact = colW < 200, tiny = colW < 140;
+  const isToday = (d) => iso(d) === iso(t0);
+
+  const first = days[0];
+  $('title').innerHTML = scene(sceneNow(), 52) + (offset === 0 ? 'Heute ist ' + DAYS_LONG[t0.getDay()] : DAYS_LONG[first.getDay()] + ', ' + first.getDate() + '. ' + MONTHS[first.getMonth()]);
+  $('todayBtn').classList.toggle('hidden', offset === 0);
+
+  let html = '<div></div>';
+  days.forEach((d) => {
+    const sp = S.special[iso(d)], we = d.getDay() === 0 || d.getDay() === 6;
+    const cls = isToday(d) ? 'today' : (sp || '');
+    const icon = sp === 'kita' ? HOUSE_X : (sp === 'urlaub' ? CASE : '');
+    const tag = isToday(d) ? '<span class="tag today">HEUTE</span>' : (we ? '<span class="tag we">Wochenende</span>' : '');
+    const dname = compact ? DAYS_SHORT[d.getDay()] : DAYS_LONG[d.getDay()];
+    const ddate = compact ? d.getDate() + '.' + (d.getMonth() + 1) + '.' : d.getDate() + '. ' + MONTHS[d.getMonth()];
+    const tagC = compact ? (isToday(d) ? '<span class="tag today">HEUTE</span>' : '') : tag;
+    html += '<div class="dayhead ' + cls + '" style="' + (compact ? 'padding:0 8px' : '') + '"><div style="display:flex;flex-direction:column;min-width:0"><span class="name">' + dname + ' ' + icon + '</span><span class="date">' + ddate + '</span></div>' + tagC + '</div>';
+  });
+
+  // Zeitspalte
+  const y = (m) => (m - START) * ppm;
+  let tc = '<div class="timecol">';
+  for (let hh = 6; hh <= 20; hh++) tc += '<div class="h" style="top:' + y(hh * 60) + 'px">' + hh + '</div>';
+  [['morgens', 360], ['vormittag', 480], ['mittag', 720], ['nachmittag', 840], ['abend', 1080]].forEach(([k, m]) => {
+    tc += '<div class="scene" style="top:' + (y(m) + 6) + 'px">' + scene(k, 40) + '</div>';
+  });
+  const nowM = nowMinutes();
+  if (offset === 0 && nowM >= START && nowM <= END) tc += '<div class="now" style="top:' + y(nowM) + 'px">jetzt</div>';
+  tc += '</div>';
+  html += tc;
+
+  days.forEach((d, i) => {
+    const sp = S.special[iso(d)], w = wIdx(d);
+    const cls = isToday(d) ? 'today' : (sp || '');
+    let col = '<div class="day ' + cls + '" data-i="' + i + '">';
+    if (sp !== 'urlaub') {
+      const bands = w < 5 && !sp
+        ? [[360, 480, '#FFF1E3'], [480, 840, '#EAF3FB'], [840, 1080, '#EDF6EC'], [1080, 1200, '#EFECFA']]
+        : [[360, 480, '#FFF1E3'], [480, 720, '#FFF8E1'], [720, 840, '#FBF4E4'], [840, 1080, '#EDF6EC'], [1080, 1200, '#EFECFA']];
+      bands.forEach(([a, b, c]) => { col += '<div class="band" style="top:' + y(a) + 'px;height:' + (y(b) - y(a)) + 'px;background:' + c + '"></div>'; });
+    }
+    col += '<div class="hourlines" style="background-image:repeating-linear-gradient(to bottom, rgba(42,42,51,.07) 0 1px, transparent 1px ' + (60 * ppm) + 'px)"></div>';
+    const dayItems = itemsFor(d);
+    itemsCache[i] = dayItems;
+    dayItems.forEach((it, n) => {
+      const top = y(it.s) + 2, hgt = Math.max(36, (it.e - it.s) * ppm - 4);
+      const wPct = 100 / it.lanes, left = 'calc(' + (it.lane * wPct) + '% + 6px)', width = 'calc(' + wPct + '% - 12px)';
+      const tall = hgt >= 110 || (compact && hgt >= 70);
+      const isz = (big, mid, sm) => tiny ? Math.min(sm, 26) : (tall ? big : (hgt > 60 ? mid : sm));
+      let inner, border;
+      const lblStyle = tiny ? ' style="font-size:13px"' : (compact ? ' style="font-size:15px"' : '');
+      if (it.kita) {
+        col += '<div class="card kitablock tall" style="top:' + top + 'px;height:' + hgt + 'px;left:' + left + ';width:' + width + '"><svg width="' + (tiny ? 30 : 44) + '" height="' + (tiny ? 30 : 44) + '" viewBox="0 0 24 24" fill="none" stroke="#2F6FB0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + KITA_PATH + '</svg><span class="lbl"' + lblStyle + '>Kita</span></div>';
+        return;
+      }
+      if (it.person) {
+        border = S.persons[it.person].color;
+        inner = avatar(it.person, isz(56, 40, 28)) + '<span class="lbl"' + lblStyle + '>' + esc(compact ? S.persons[it.person].name : it.text) + '</span>';
+      } else {
+        const s = SYM[it.sym];
+        if (s.person) {
+          border = S.persons[s.person].color;
+          inner = avatar(s.person, isz(56, 40, 28)) + '<span class="lbl"' + lblStyle + '>' + esc(S.persons[s.person].name) + '</span>';
+        } else {
+          border = s.color;
+          inner = symSvg(it.sym, isz(52, 38, 26)) + '<span class="lbl"' + lblStyle + '>' + it.sym + '</span>';
+        }
+      }
+      if (it.own) inner += STAR;
+      col += '<div class="card' + (tall ? ' tall' : '') + '" data-n="' + n + '" style="cursor:pointer;' + (compact ? 'padding:0 6px;gap:6px;' : '') + 'top:' + top + 'px;height:' + hgt + 'px;left:' + left + ';width:' + width + ';border-color:' + border + '">' + inner + '</div>';
+    });
+    if (isToday(d) && nowM >= START && nowM <= END) {
+      col += '<div class="nowline" style="top:' + (y(nowM) - 2) + 'px"></div><div class="nowdot" style="top:' + y(nowM) + 'px"></div>';
+    }
+    col += '</div>';
+    html += col;
+  });
+  grid.innerHTML = html;
+
+  grid.querySelectorAll('.day').forEach((el) => {
+    el.addEventListener('click', (ev) => {
+      const card = ev.target.closest('.card[data-n]');
+      if (card) { openEdit(days[+el.dataset.i], itemsCache[+el.dataset.i][+card.dataset.n]); return; }
+      const r = el.getBoundingClientRect();
+      let m = START + (ev.clientY - r.top) / ppm;
+      m = Math.floor(m / 30) * 30;
+      m = Math.max(START, Math.min(END - 30, m));
+      openPicker(days[+el.dataset.i], m);
+    });
+  });
+}
+function nowMinutes() { const n = new Date(); return n.getHours() * 60 + n.getMinutes(); }
+function sceneNow() {
+  const m = nowMinutes();
+  if (m < 480) return 'morgens'; if (m < 720) return 'vormittag'; if (m < 840) return 'mittag'; if (m < 1080) return 'nachmittag'; return 'abend';
+}
+
+// ---------- Blättern / Wischen ----------
+$('prevBtn').onclick = () => { offset--; render(); };
+$('nextBtn').onclick = () => { offset++; render(); };
+$('todayBtn').onclick = () => { offset = 0; render(); };
+let sx = null, sy = null;
+$('grid').addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+$('grid').addEventListener('touchend', (e) => {
+  if (sx === null) return;
+  const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+  sx = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { offset += dx < 0 ? 1 : -1; render(); e.preventDefault(); }
+});
+
+// ---------- Nora trägt ein ----------
+function openPicker(day, startM) {
+  let picked = null, more = false, s = startM, e = Math.min(END, startM + 120);
+  const layer = $('layer');
+  function draw() {
+    let tiles = '';
+    Object.keys(SYM).forEach((k) => {
+      const ic = SYM[k].person ? avatar(SYM[k].person, 72) : symSvg(k, 72);
+      tiles += '<button class="tile' + (picked === k ? ' on' : '') + '" data-k="' + k + '">' + ic + '<span>' + k + '</span></button>';
+    });
+    const dur = e - s, dh = Math.floor(dur / 60), dm = dur % 60;
+    const durT = (dh ? dh + (dh === 1 ? ' Stunde' : ' Stunden') : '') + (dh && dm ? ' ' : '') + (dm ? dm + ' Minuten' : '');
+    layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
+        '<div style="display:flex;align-items:center;gap:14px">' + scene(sceneFor(s), 64) +
+          '<div><div class="sub">' + DAYS_LONG[day.getDay()] + ' · ' + fmt(s) + ' bis ' + fmt(e) + ' Uhr</div><h2>Was machst du?</h2></div></div>' +
+        '<div style="display:flex;gap:10px;align-items:center">' +
+          '<button id="moreBtn" aria-label="Zeit einstellen" style="width:44px;height:44px;border-radius:22px;border:none;background:' + (more ? '#EDE7DD' : 'transparent') + ';cursor:pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="#9A9387"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>' +
+          '<button class="round" id="closeBtn" aria-label="Schließen"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>' +
+        '</div></div>' +
+      (more ? '<div class="timerow"><div class="step">Beginn <button data-a="s-">−</button><span class="val">' + fmt(s) + '</span><button data-a="s+">+</button></div>' +
+              '<div class="step">Ende <button data-a="e-">−</button><span class="val">' + fmt(e) + '</span><button data-a="e+">+</button></div>' +
+              '<span class="muted" style="font-size:18px;margin-left:auto">Dauer: ' + durT + '</span></div>' : '') +
+      '<div class="tiles">' + tiles + '</div>' +
+      '<button class="done-btn" id="doneBtn"' + (picked ? '' : ' disabled') + '><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Fertig</button>' +
+      '</div></div>';
+    layer.querySelectorAll('.tile').forEach((b) => b.onclick = () => { picked = b.dataset.k; draw(); });
+    layer.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
+      const a = b.dataset.a;
+      if (a === 's-' && s > START) { s -= 30; e -= 30; }
+      if (a === 's+' && e < END) { s += 30; e += 30; }
+      if (a === 'e-' && e - s > 30) e -= 30;
+      if (a === 'e+' && e < END) e += 30;
+      draw();
+    });
+    $('moreBtn').onclick = () => { more = !more; draw(); };
+    $('closeBtn').onclick = close;
+    $('ov').onclick = (ev) => { if (ev.target.id === 'ov') close(); };
+    $('doneBtn').onclick = () => {
+      if (!picked) return;
+      S.entries.push({ id: Date.now(), date: iso(day), start: s, end: e, sym: picked });
+      save(); close(); render();
+    };
+  }
+  function close() { layer.innerHTML = ''; }
+  draw();
+}
+// ---------- Termin antippen: Zeit ändern oder löschen ----------
+function openEdit(day, it) {
+  let s = it.s, e = it.e, confirmDel = false;
+  const layer = $('layer');
+  let icon, label;
+  if (it.person) { icon = avatar(it.person, 64); label = it.text; }
+  else if (SYM[it.sym].person) { icon = avatar(SYM[it.sym].person, 64); label = S.persons[SYM[it.sym].person].name; }
+  else { icon = symSvg(it.sym, 64); label = it.sym; }
+  function draw() {
+    const dur = e - s, dh = Math.floor(dur / 60), dm = dur % 60;
+    const durT = (dh ? dh + (dh === 1 ? ' Stunde' : ' Stunden') : '') + (dh && dm ? ' ' : '') + (dm ? dm + ' Minuten' : '');
+    layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet" style="width:min(640px,100%)">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
+        '<div style="display:flex;align-items:center;gap:16px">' + icon +
+          '<div><div class="sub">' + DAYS_LONG[day.getDay()] + ', ' + day.getDate() + '. ' + MONTHS[day.getMonth()] + '</div><h2 style="font-size:30px">' + esc(label) + '</h2></div></div>' +
+        '<button class="round" id="closeBtn" aria-label="Schließen"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+      '<div class="timerow"><div class="step">Beginn <button data-a="s-">−</button><span class="val">' + fmt(s) + '</span><button data-a="s+">+</button></div>' +
+        '<div class="step">Ende <button data-a="e-">−</button><span class="val">' + fmt(e) + '</span><button data-a="e+">+</button></div>' +
+        '<span class="muted" style="font-size:18px;margin-left:auto">Dauer: ' + durT + '</span></div>' +
+      (it.own ? '' : '<div class="muted" style="font-size:16px">Gilt nur für diesen Tag. Die Standard-Woche bleibt gleich.</div>') +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
+        '<button id="delBtn" style="height:52px;padding:0 20px;border-radius:26px;border:2px solid ' + (confirmDel ? '#D6453D' : '#E2DBCF') + ';background:' + (confirmDel ? '#D6453D' : '#fff') + ';color:' + (confirmDel ? '#fff' : '#B3342D') + ';font-size:18px;font-weight:700;cursor:pointer">' + (confirmDel ? 'Wirklich löschen?' : 'Löschen') + '</button>' +
+        '<button class="done-btn" id="doneBtn" style="width:240px;height:64px;font-size:24px;align-self:auto"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Fertig</button>' +
+      '</div></div></div>';
+    layer.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => {
+      const a = b.dataset.a;
+      if (a === 's-' && s > START) s -= 30;
+      if (a === 's+' && s < e - 30) s += 30;
+      if (a === 'e-' && e > s + 30) e -= 30;
+      if (a === 'e+' && e < END) e += 30;
+      confirmDel = false; draw();
+    });
+    $('closeBtn').onclick = close;
+    $('ov').onclick = (ev) => { if (ev.target.id === 'ov') close(); };
+    $('delBtn').onclick = () => {
+      if (!confirmDel) { confirmDel = true; draw(); return; }
+      if (it.own) S.entries = S.entries.filter((x) => 'e:' + x.id !== it.id);
+      else { S.over = S.over || {}; S.over[iso(day) + '|' + it.slot] = { del: true }; }
+      save(); close(); render();
+    };
+    $('doneBtn').onclick = () => {
+      if (it.own) S.entries.forEach((x) => { if ('e:' + x.id === it.id) { x.start = s; x.end = e; } });
+      else { S.over = S.over || {}; S.over[iso(day) + '|' + it.slot] = { s, e }; }
+      save(); close(); render();
+    };
+  }
+  function close() { layer.innerHTML = ''; }
+  draw();
+}
+
+function sceneFor(m) { if (m < 480) return 'morgens'; if (m < 720) return 'vormittag'; if (m < 840) return 'mittag'; if (m < 1080) return 'nachmittag'; return 'abend'; }
+
+// ---------- Eltern-Bereich ----------
+$('lockBtn').onclick = openGate;
+function openGate() {
+  const a = 3 + Math.floor(Math.random() * 7), b = 3 + Math.floor(Math.random() * 7);
+  let entry = '', wrong = false;
+  const layer = $('layer');
+  function draw() {
+    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', '✕'];
+    layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet" style="width:440px;align-items:center;text-align:center">' +
+      '<div class="sub">Eltern-Bereich</div><h2>Was ist ' + a + ' × ' + b + '?</h2>' +
+      '<div style="width:200px;height:64px;border-radius:16px;border:3px solid ' + (wrong ? '#D6453D' : '#E2DBCF') + ';background:#FBF8F3;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;letter-spacing:4px">' + (entry || '&nbsp;') + '</div>' +
+      (wrong ? '<div style="color:#B3342D;font-weight:700;font-size:17px">Leider falsch. Nochmal!</div>' : '') +
+      '<div class="keypad">' + keys.map((k) => '<button data-k="' + k + '">' + k + '</button>').join('') + '</div></div></div>';
+    layer.querySelectorAll('.keypad button').forEach((btn) => btn.onclick = () => {
+      const k = btn.dataset.k;
+      if (k === '✕') { layer.innerHTML = ''; return; }
+      if (k === '⌫') { entry = entry.slice(0, -1); wrong = false; draw(); return; }
+      if (wrong) { entry = ''; wrong = false; }
+      entry += k;
+      if (+entry === a * b) { layer.innerHTML = ''; openParent(); return; }
+      if (entry.length >= String(a * b).length) wrong = true;
+      draw();
+    });
+  }
+  draw();
+}
+
+let tab = 'personen';
+function openParent() {
+  const layer = $('layer');
+  const tabs = [['personen', 'Personen'], ['woche', 'Standard-Woche'], ['besondere', 'Besondere Tage'], ['eintraege', 'Noras Einträge'], ['google', 'Google-Kalender'], ['anzeige', 'Anzeige']];
+  layer.innerHTML = '<div class="parent"><nav class="side"><div class="brand">Eltern-Bereich</div>' +
+    tabs.map(([k, l]) => '<button data-t="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + l + '</button>').join('') +
+    '<button class="back" id="backBtn">‹ Zurück zu Nora</button></nav><div class="main" id="pmain"></div></div>';
+  layer.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { tab = b.dataset.t; openParent(); });
+  $('backBtn').onclick = () => { layer.innerHTML = ''; render(); };
+  ({ personen: tabPersonen, woche: tabWoche, besondere: tabBesondere, eintraege: tabEintraege, google: tabGoogle, anzeige: tabAnzeige })[tab]($('pmain'));
+}
+
+function tabPersonen(el) {
+  let h = '<h2>Personen</h2><div class="muted">Name, Farbe und Foto. Das Foto bleibt in diesem Prototyp nur auf diesem Gerät.</div><div class="cards3">';
+  Object.keys(S.persons).forEach((k) => {
+    const p = S.persons[k];
+    h += '<div class="pcard">' + avatar(k, 96) +
+      '<input type="text" data-name="' + k + '" value="' + esc(p.name) + '">' +
+      '<div class="swatches">' + COLORS.map((c) => '<span class="sw' + (c === p.color ? ' on' : '') + '" data-c="' + c + '" data-k="' + k + '" style="background:' + c + '"></span>').join('') + '</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap"><label class="filebtn">Foto wählen<input type="file" accept="image/*" data-photo="' + k + '"></label>' +
+      (p.photo ? '<button class="pill-btn" data-del="' + k + '">Foto entfernen</button>' : '') + '</div></div>';
+  });
+  h += '</div>';
+  el.innerHTML = h;
+  el.querySelectorAll('[data-name]').forEach((i) => i.onchange = () => { S.persons[i.dataset.name].name = i.value.trim() || S.persons[i.dataset.name].name; save(); });
+  el.querySelectorAll('.sw').forEach((s) => s.onclick = () => { S.persons[s.dataset.k].color = s.dataset.c; save(); tabPersonen(el); });
+  el.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => { S.persons[b.dataset.del].photo = null; save(); tabPersonen(el); });
+  el.querySelectorAll('[data-photo]').forEach((inp) => inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f), img = new Image();
+    img.onload = () => {
+      const size = 240, c = document.createElement('canvas');
+      c.width = size; c.height = size;
+      const s = Math.min(img.width, img.height);
+      c.getContext('2d').drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+      S.persons[inp.dataset.photo].photo = c.toDataURL('image/jpeg', 0.8);
+      URL.revokeObjectURL(url); save(); tabPersonen(el);
+    };
+    img.src = url;
+  });
+}
+
+function tabWoche(el) {
+  const rows = [['bringt', 'Bringt'], ['abholen', 'Holt ab'], ['nachm', 'Nachmittag'], ['bett', 'Ins Bett']];
+  const wd = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  let h = '<h2>Standard-Woche</h2><div class="muted">Tippe auf ein Feld, um es zu ändern. Noras Einträge gehen vor.</div><div class="wk"><div></div>';
+  wd.forEach((d, i) => { h += '<div class="hd' + (i >= 5 ? ' we' : '') + '">' + d + '</div>'; });
+  rows.forEach(([key, label]) => {
+    h += '<div class="rl">' + label + '</div>';
+    S.week[key].forEach((v, i) => {
+      let inner = '<span style="font-size:22px;color:#C9BFAE">+</span>';
+      if (i >= 5 && (key === 'bringt' || key === 'abholen')) inner = '<span style="font-size:22px;color:#B5AB9A">–</span>';
+      if (v && S.persons[v]) inner = avatar(v, 44);
+      else if (v && SYM[v]) inner = SYM[v].person ? avatar(SYM[v].person, 44) : symSvg(v, 36);
+      h += '<button class="cell" data-k="' + key + '" data-i="' + i + '"' + (i >= 5 ? ' style="background:#F7FBF7"' : '') + '>' + inner + '</button>';
+    });
+  });
+  h += '</div>';
+  el.innerHTML = h;
+  el.querySelectorAll('.cell').forEach((c) => c.onclick = () => {
+    const key = c.dataset.k, i = +c.dataset.i;
+    if (i >= 5 && (key === 'bringt' || key === 'abholen')) return;
+    const label = rows.find((r) => r[0] === key)[1];
+    const cur = S.week[key][i];
+    const opts = key === 'nachm'
+      ? Object.keys(SYM).filter((k) => !SYM[k].person).map((k) => [k, symSvg(k, 44), k])
+      : Object.keys(S.persons).map((k) => [k, avatar(k, 52), S.persons[k].name]);
+    opts.push([null, '<span style="font-size:34px;color:#B5AB9A;line-height:52px">–</span>', key === 'nachm' ? 'Nichts' : 'Niemand']);
+    choose('Jede Woche', ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][i] + ' · ' + label, opts, cur, (v) => { S.week[key][i] = v; save(); tabWoche(el); });
+  });
+}
+
+function choose(sub, title, opts, cur, done) {
+  const box = document.createElement('div');
+  box.innerHTML = '<div class="overlay" style="z-index:60"><div class="sheet" style="width:min(640px,100%)">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center"><div><div class="sub">' + sub + '</div><h2 style="font-size:28px">' + title + '</h2></div>' +
+    '<button class="round" data-x="1" aria-label="Schließen"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+    '<div class="opts">' + opts.map((o, n) => '<button class="opt' + (o[0] === cur ? ' on' : '') + '" data-n="' + n + '">' + o[1] + '<span>' + esc(o[2]) + '</span></button>').join('') + '</div></div></div>';
+  document.body.appendChild(box);
+  box.querySelector('[data-x]').onclick = () => box.remove();
+  box.querySelectorAll('[data-n]').forEach((b) => b.onclick = () => { done(opts[+b.dataset.n][0]); box.remove(); });
+}
+
+let monthOff = 0, mode = 'kita';
+function tabBesondere(el) {
+  const base = today0(); base.setDate(1); base.setMonth(base.getMonth() + monthOff);
+  const y = base.getFullYear(), mo = base.getMonth();
+  const daysIn = new Date(y, mo + 1, 0).getDate(), lead = (base.getDay() + 6) % 7;
+  let h = '<h2>Besondere Tage</h2><div class="muted">Erst die Art wählen, dann auf die Tage tippen. Gilt immer für den ganzen Tag.</div>' +
+    '<div class="modes"><button data-m="kita" class="' + (mode === 'kita' ? 'on' : '') + '" style="background:#EEF0F3">' + HOUSE_X + 'Kita zu</button>' +
+    '<button data-m="urlaub" class="' + (mode === 'urlaub' ? 'on' : '') + '" style="background:#FFE3C7">' + CASE + 'Urlaub</button>' +
+    '<button data-m="normal" class="' + (mode === 'normal' ? 'on' : '') + '" style="background:#fff">Normaler Tag</button></div>' +
+    '<div style="background:#fff;border:2px solid #E7E1D8;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between"><button class="round" id="mPrev" aria-label="Voriger Monat">‹</button><span style="font-size:24px;font-weight:700">' + MONTHS[mo] + ' ' + y + '</span><button class="round" id="mNext" aria-label="Nächster Monat">›</button></div>' +
+    '<div class="month">' + ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d) => '<div class="wd">' + d + '</div>').join('');
+  for (let i = 0; i < lead; i++) h += '<div></div>';
+  const tIso = iso(today0());
+  for (let n = 1; n <= daysIn; n++) {
+    const d = new Date(y, mo, n), k = iso(d), t = S.special[k];
+    const bg = t === 'kita' ? '#EEF0F3' : (t === 'urlaub' ? '#FFE3C7' : '#fff');
+    const bd = k === tIso ? '3px solid #E0A422' : (t === 'kita' ? '2px solid #8C97A6' : (t === 'urlaub' ? '2px solid #F0A04B' : '2px solid #EFEAE1'));
+    const we = d.getDay() === 0 || d.getDay() === 6;
+    h += '<button class="d" data-d="' + k + '" style="background:' + bg + ';border:' + bd + ';color:' + (we ? '#3E7A4E' : '#2A2A33') + '">' + n + (t === 'kita' ? HOUSE_X.replace(/26/g, '20') : (t === 'urlaub' ? CASE.replace(/26/g, '20') : '')) + '</button>';
+  }
+  h += '</div></div>';
+  el.innerHTML = h;
+  el.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => { mode = b.dataset.m; tabBesondere(el); });
+  el.querySelectorAll('[data-d]').forEach((b) => b.onclick = () => {
+    if (mode === 'normal') delete S.special[b.dataset.d]; else S.special[b.dataset.d] = mode;
+    save(); tabBesondere(el);
+  });
+  $('mPrev').onclick = () => { monthOff--; tabBesondere(el); };
+  $('mNext').onclick = () => { monthOff++; tabBesondere(el); };
+}
+
+function tabEintraege(el) {
+  const list = S.entries.slice().sort((a, b) => (a.date + fmt(a.start).padStart(5, '0')).localeCompare(b.date + fmt(b.start).padStart(5, '0')));
+  let h = '<h2>Noras Einträge</h2><div class="muted">Hier kannst du Einträge von Nora löschen.</div>';
+  if (!list.length) h += '<div class="row muted" style="font-size:18px">Noch keine Einträge.</div>';
+  list.forEach((x) => {
+    const d = new Date(x.date + 'T00:00:00');
+    const ic = SYM[x.sym].person ? avatar(SYM[x.sym].person, 40) : symSvg(x.sym, 36);
+    h += '<div class="row">' + ic + '<div style="flex:1"><div style="font-size:19px;font-weight:700">' + x.sym + '</div><div class="muted">' + DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + '. ' + MONTHS[d.getMonth()] + ' · ' + fmt(x.start) + ' bis ' + fmt(x.end) + ' Uhr</div></div>' +
+      '<button class="pill-btn" data-del="' + x.id + '">Löschen</button></div>';
+  });
+  h += '<div style="margin-top:20px"><button class="pill-btn" id="resetBtn">Alle Testdaten zurücksetzen</button></div>';
+  el.innerHTML = h;
+  el.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => { S.entries = S.entries.filter((x) => String(x.id) !== b.dataset.del); save(); tabEintraege(el); });
+  let armed = false;
+  $('resetBtn').onclick = () => {
+    if (!armed) { armed = true; $('resetBtn').textContent = 'Wirklich alles zurücksetzen? Nochmal tippen'; return; }
+    S = defaults(); save(); tabEintraege(el);
+  };
+}
+
+function tabGoogle(el) {
+  el.innerHTML = '<h2>Google-Kalender</h2><div class="row" style="font-size:18px"><span style="width:14px;height:14px;border-radius:7px;background:#B5AB9A"></span>Noch nicht verbunden.</div>' +
+    '<div class="muted" style="font-size:18px">Die Verbindung zu Noras Google-Kalender kommt im nächsten Schritt, zusammen mit dem Online-Speicher (Supabase).</div>';
+}
+
+function tabAnzeige(el) {
+  const cur = S.settings.days;
+  let h = '<h2>Anzeige</h2><div class="muted" style="font-size:18px">Wie viele Tage sollen nebeneinander zu sehen sein? Für das iPad passen 3 Tage gut, für einen großen Monitor an der Wand zum Beispiel 7 Tage.</div>' +
+    '<div class="opts" style="grid-template-columns:repeat(7,minmax(0,1fr))">';
+  for (let k = 1; k <= 7; k++) h += '<button class="opt' + (k === cur ? ' on' : '') + '" data-days="' + k + '" style="height:96px"><span style="font-size:34px">' + k + '</span><span>' + (k === 1 ? 'Tag' : 'Tage') + '</span></button>';
+  h += '</div><div class="muted">Die Einstellung gilt für dieses Gerät.</div>';
+  el.innerHTML = h;
+  el.querySelectorAll('[data-days]').forEach((b) => b.onclick = () => { S.settings.days = +b.dataset.days; save(); tabAnzeige(el); });
+}
+
+// ---------- Start ----------
+window.addEventListener('resize', render);
+setInterval(render, 60000);
+render();
+})();
+</script>
+</body>
+</html>
