@@ -203,7 +203,7 @@ function defaults() {
       abholen: ['P', 'J', 'M', 'J', 'J', null, null],
       nachm:   [null, 'Schwimmen', null, 'Garten', null, null, null],
       bett:    ['M', 'P', 'M', 'P', 'P', 'M', 'P'],
-      kita:    { von: 480, bis: 900 }
+      kita:    { von: 420, bis: 900 }
     },
     special: {},
     entries: [],
@@ -214,7 +214,7 @@ let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || defaults(); } catch (e) { S = defaults(); }
 S.settings = S.settings || { days: 3 };
 S.over = S.over || {};
-const kitaZeit = () => (S.week && S.week.kita) || { von: 480, bis: 900 };
+const kitaZeit = () => (S.week && S.week.kita) || { von: 420, bis: 900 };
 
 // ---------- Supabase ----------
 const SUPABASE_URL = 'https://zybcckfhjmdrrsayrquu.supabase.co';
