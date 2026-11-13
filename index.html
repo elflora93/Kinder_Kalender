@@ -202,7 +202,8 @@ function defaults() {
       bringt:  ['M', 'P', 'M', 'P', 'M', null, null],
       abholen: ['P', 'J', 'M', 'J', 'J', null, null],
       nachm:   [null, 'Schwimmen', null, 'Garten', null, null, null],
-      bett:    ['M', 'P', 'M', 'P', 'P', 'M', 'P']
+      bett:    ['M', 'P', 'M', 'P', 'P', 'M', 'P'],
+      kita:    { von: 480, bis: 900 }
     },
     special: {},
     entries: [],
@@ -213,6 +214,7 @@ let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || defaults(); } catch (e) { S = defaults(); }
 S.settings = S.settings || { days: 3 };
 S.over = S.over || {};
+const kitaZeit = () => (S.week && S.week.kita) || { von: 480, bis: 900 };
 
 // ---------- Supabase ----------
 const SUPABASE_URL = 'https://zybcckfhjmdrrsayrquu.supabase.co';
@@ -311,11 +313,15 @@ function itemsFor(d) {
     if (o && o.del) return;
     out.push(Object.assign({ id: 'w:' + slot, slot, s: o ? o.s : s, e: o ? o.e : e }, extra));
   };
-  if (kitaDay && wk.bringt[w]) std('bringt', 420, 480, { person: wk.bringt[w], text: S.persons[wk.bringt[w]].name + ' bringt' });
-  if (kitaDay) out.push({ s: 480, e: 840, kita: true });
-  if (kitaDay && wk.abholen[w]) std('abholen', 840, 900, { person: wk.abholen[w], text: S.persons[wk.abholen[w]].name + ' holt ab' });
-  if (wk.nachm[w]) std('nachm', 900, 1020, { sym: wk.nachm[w] });
-  if (wk.bett[w]) std('bett', 1140, 1200, { person: wk.bett[w], text: S.persons[wk.bett[w]].name + ': ins Bett' });
+  const kz = kitaZeit(), P = (k) => S.persons[k];
+  if (kitaDay && P(wk.bringt[w])) std('bringt', kz.von - 60, kz.von, { person: wk.bringt[w], text: P(wk.bringt[w]).name + ' bringt' });
+  if (kitaDay) out.push({ s: kz.von, e: kz.bis, kita: true });
+  if (kitaDay && P(wk.abholen[w])) std('abholen', kz.bis, kz.bis + 60, { person: wk.abholen[w], text: P(wk.abholen[w]).name + ' holt ab' });
+  if (wk.nachm[w]) {
+    const ns = kitaDay ? kz.bis + 60 : 900;
+    std('nachm', Math.min(ns, END - 60), Math.min(ns + 120, END), { sym: wk.nachm[w] });
+  }
+  if (P(wk.bett[w])) std('bett', 1140, 1200, { person: wk.bett[w], text: P(wk.bett[w]).name + ': ins Bett' });
   S.entries.filter((x) => x.date === iso(d)).forEach((x) => out.push({ id: 'e:' + x.id, s: x.start, e: x.end, sym: x.sym, own: true }));
   // Spalten bei Überschneidung
   out.sort((a, b) => a.s - b.s || (b.e - b.s) - (a.e - a.s));
@@ -383,7 +389,7 @@ function render() {
     let col = '<div class="day ' + cls + '" data-i="' + i + '">';
     if (sp !== 'urlaub') {
       const bands = w < 5 && !sp
-        ? [[360, 480, '#FFF1E3'], [480, 840, '#EAF3FB'], [840, 1080, '#EDF6EC'], [1080, 1200, '#EFECFA']]
+        ? [[360, kitaZeit().von, '#FFF1E3'], [kitaZeit().von, kitaZeit().bis, '#EAF3FB'], [kitaZeit().bis, 1080, '#EDF6EC'], [1080, 1200, '#EFECFA']]
         : [[360, 480, '#FFF1E3'], [480, 720, '#FFF8E1'], [720, 840, '#FBF4E4'], [840, 1080, '#EDF6EC'], [1080, 1200, '#EFECFA']];
       bands.forEach(([a, b, c]) => { col += '<div class="band" style="top:' + y(a) + 'px;height:' + (y(b) - y(a)) + 'px;background:' + c + '"></div>'; });
     }
@@ -602,10 +608,30 @@ function tabPersonen(el) {
       '<input type="text" data-name="' + k + '" value="' + esc(p.name) + '">' +
       '<div class="swatches">' + COLORS.map((c) => '<span class="sw' + (c === p.color ? ' on' : '') + '" data-c="' + c + '" data-k="' + k + '" style="background:' + c + '"></span>').join('') + '</div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap"><label class="filebtn">Foto wählen<input type="file" accept="image/*" data-photo="' + k + '"></label>' +
-      (p.photo ? '<button class="pill-btn" data-del="' + k + '">Foto entfernen</button>' : '') + '</div></div>';
+      (p.photo ? '<button class="pill-btn" data-del="' + k + '">Foto entfernen</button>' : '') + '</div>' +
+      (k === 'J' ? '<div class="muted" style="font-size:14px">Wird auch für das Oma-Symbol genutzt.</div>' : '<button class="pill-btn" data-rm="' + k + '" style="color:#B3342D;align-self:flex-start">Person löschen</button>') +
+      '</div>';
   });
+  h += '<button class="pcard" id="addPerson" style="border:3px dashed #C9BFAE;background:transparent;align-items:center;justify-content:center;min-height:220px;cursor:pointer;font-size:22px;font-weight:700;color:#4A463F">' +
+    '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#7A7468" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Person anlegen</button>';
   h += '</div>';
   el.innerHTML = h;
+  document.getElementById('addPerson').onclick = () => {
+    const used = Object.values(S.persons).map((p) => p.color);
+    const color = COLORS.find((c) => used.indexOf(c) < 0) || COLORS[0];
+    S.persons['p' + Date.now()] = { name: 'Neue Person', color, photo: null };
+    save(); tabPersonen(el);
+    const inputs = el.querySelectorAll('[data-name]');
+    const last = inputs[inputs.length - 1];
+    if (last) { last.focus(); last.select(); }
+  };
+  el.querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => {
+    const k = b.dataset.rm;
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Wirklich löschen?'; b.style.background = '#D6453D'; b.style.color = '#fff'; return; }
+    delete S.persons[k];
+    ['bringt', 'abholen', 'bett'].forEach((r) => { S.week[r] = S.week[r].map((v) => v === k ? null : v); });
+    save(); tabPersonen(el);
+  });
   el.querySelectorAll('[data-name]').forEach((i) => i.onchange = () => { S.persons[i.dataset.name].name = i.value.trim() || S.persons[i.dataset.name].name; save(); });
   el.querySelectorAll('.sw').forEach((s) => s.onclick = () => { S.persons[s.dataset.k].color = s.dataset.c; save(); tabPersonen(el); });
   el.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => { S.persons[b.dataset.del].photo = null; save(); tabPersonen(el); });
@@ -641,7 +667,20 @@ function tabWoche(el) {
     });
   });
   h += '</div>';
+  const kz = kitaZeit();
+  h += '<h2 style="font-size:24px;margin-top:10px">Kita-Zeit (Montag bis Freitag)</h2><div class="timerow" style="background:#fff;border:2px solid #E7E1D8">' +
+    '<div class="step">Beginn <button data-kz="v-">−</button><span class="val">' + fmt(kz.von) + '</span><button data-kz="v+">+</button></div>' +
+    '<div class="step">Ende <button data-kz="b-">−</button><span class="val">' + fmt(kz.bis) + '</span><button data-kz="b+">+</button></div>' +
+    '<span class="muted" style="margin-left:auto">Bringen ist die Stunde davor, Abholen zum Ende.</span></div>';
   el.innerHTML = h;
+  el.querySelectorAll('[data-kz]').forEach((b) => b.onclick = () => {
+    const z = Object.assign({}, kitaZeit()), a = b.dataset.kz;
+    if (a === 'v-' && z.von > 420) z.von -= 30;
+    if (a === 'v+' && z.von < z.bis - 60) z.von += 30;
+    if (a === 'b-' && z.bis > z.von + 60) z.bis -= 30;
+    if (a === 'b+' && z.bis < 1080) z.bis += 30;
+    S.week.kita = z; save(); tabWoche(el);
+  });
   el.querySelectorAll('.cell').forEach((c) => c.onclick = () => {
     const key = c.dataset.k, i = +c.dataset.i;
     if (i >= 5 && (key === 'bringt' || key === 'abholen')) return;
