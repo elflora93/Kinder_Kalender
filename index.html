@@ -434,20 +434,23 @@ function itemsFor(d) {
   // … und beginnen erst nach dem Bringen
   const bringt = out.find((it) => it.slot === 'bringt');
   if (bringt) out.forEach((it) => { if (it !== bringt && !it.kita && it.s < bringt.e && it.e > bringt.e && it.s <= bringt.s) it.s = bringt.e; });
-  // Spalten bei Überschneidung
-  out.sort((a, b) => a.s - b.s || (b.e - b.s) - (a.e - a.s));
-  const lanesEnd = [];
-  out.forEach((it) => {
-    let l = lanesEnd.findIndex((end) => end <= it.s);
-    if (l < 0) { l = lanesEnd.length; lanesEnd.push(0); }
-    lanesEnd[l] = it.e; it.lane = l;
+  // Nichts nebeneinander: wichtigere Termine zuerst, die anderen weichen in freie Zeit aus
+  const prio = (it) => it.slot && it.slot !== 'nachm' ? 1 : it.own ? 2 : it.google ? 3 : it.kita ? 5 : 4;
+  const taken = [], shown = [];
+  out.slice().sort((a, b) => prio(a) - prio(b) || a.s - b.s).forEach((it) => {
+    let free = [[it.s, it.e]];
+    taken.forEach(([a, b]) => {
+      const next = [];
+      free.forEach(([x, y]) => { if (b <= x || a >= y) next.push([x, y]); else { if (a > x) next.push([x, a]); if (b < y) next.push([b, y]); } });
+      free = next;
+    });
+    const best = free.sort((p, q) => (q[1] - q[0]) - (p[1] - p[0]))[0];
+    if (!best || best[1] - best[0] < 30) return;
+    it.s = best[0]; it.e = best[1]; it.lane = 0; it.lanes = 1;
+    taken.push([it.s, it.e]); shown.push(it);
   });
-  out.forEach((it) => {
-    let n = 1;
-    out.forEach((o) => { if (o.s < it.e && o.e > it.s) n = Math.max(n, o.lane + 1); });
-    it.lanes = n;
-  });
-  return out;
+  shown.sort((a, b) => a.s - b.s);
+  return shown;
 }
 
 let offset = 0, ppm = 0.7;
