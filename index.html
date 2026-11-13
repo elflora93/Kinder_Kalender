@@ -207,6 +207,7 @@ function defaults() {
     },
     special: {},
     entries: [],
+    stich: { J: ['Oma'], Schwimmen: ['Schwimmkurs'], Freunde: ['Playdate', 'spielen'] },
     settings: { days: 3 }
   };
 }
@@ -214,12 +215,13 @@ let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || defaults(); } catch (e) { S = defaults(); }
 S.settings = S.settings || { days: 3 };
 S.over = S.over || {};
+S.stich = S.stich || { J: ['Oma'], Schwimmen: ['Schwimmkurs'], Freunde: ['Playdate', 'spielen'] };
 const kitaZeit = () => (S.week && S.week.kita) || { von: 420, bis: 900 };
 
 // ---------- Supabase ----------
 const SUPABASE_URL = 'https://zybcckfhjmdrrsayrquu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IJZcClgYEFDN2OSPTmGMhQ_ASrXPNlc';
-const PARTS = ['persons', 'week', 'special', 'entries', 'over'];
+const PARTS = ['persons', 'week', 'special', 'entries', 'over', 'stich'];
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 const synced = {};
 let online = false;
@@ -248,6 +250,7 @@ async function loadRemote() {
   const have = {};
   (data || []).forEach((r) => { have[r.schluessel] = true; S[r.schluessel] = r.wert; synced[r.schluessel] = JSON.stringify(r.wert); });
   S.over = S.over || {};
+  S.stich = S.stich || {};
   cache();
   // Beim allerersten Start die Beispieldaten hochladen
   if (PARTS.some((p) => !have[p])) save();
@@ -276,14 +279,52 @@ function showLogin(msg) {
     const { error } = await sb.auth.signInWithPassword({ email: document.getElementById('lgMail').value.trim(), password: document.getElementById('lgPass').value });
     if (error) { showLogin('E-Mail oder Passwort stimmt nicht.'); return; }
     document.getElementById('layer').innerHTML = '';
-    online = true; await loadRemote(); listen();
+    online = true; await loadRemote(); listen(); fetchGoogle();
   };
 }
+// ---------- Google-Kalender ----------
+const GKEY = 'noraKalender.google.v1';
+let G = { events: [], at: null, error: null };
+try { const g = JSON.parse(localStorage.getItem(GKEY)); if (g) G = { events: g.events || [], at: g.at ? new Date(g.at) : null, error: null }; } catch (e) { /* kein Zwischenspeicher */ }
+async function fetchGoogle() {
+  if (!sb || !online) return;
+  try {
+    const { data, error } = await sb.functions.invoke('google-kalender');
+    if (error || !data || data.error) { G.error = (data && data.error) || 'nicht erreichbar'; }
+    else {
+      G = { events: data.events || [], at: new Date(), error: null };
+      try { localStorage.setItem(GKEY, JSON.stringify({ events: G.events, at: G.at })); } catch (e) { /* voll */ }
+    }
+  } catch (e) { G.error = 'nicht erreichbar'; }
+  render();
+}
+const SYM_ACT = () => Object.keys(SYM).filter((k) => !SYM[k].person);
+function keywordsFor(key) {
+  const base = S.persons[key] ? [S.persons[key].name] : [key];
+  return base.concat((S.stich && S.stich[key]) || []).map((w) => String(w).toLowerCase().trim()).filter(Boolean);
+}
+function matchTitle(title) {
+  const t = String(title).toLowerCase();
+  const best = (keys) => {
+    let hit = null, len = 0;
+    keys.forEach((k) => keywordsFor(k).forEach((w) => { if (t.indexOf(w) >= 0 && w.length > len) { hit = k; len = w.length; } }));
+    return hit;
+  };
+  const person = best(Object.keys(S.persons));
+  const sym = best(SYM_ACT());
+  let role = null;
+  if (/bring/.test(t)) role = 'bringt';
+  else if (/abhol|holt|hol /.test(t)) role = 'abholen';
+  else if (/bett|schlaf/.test(t)) role = 'bett';
+  return { person, sym, role };
+}
+function googleFor(d) { return G.events.filter((e) => e.date === iso(d)); }
+
 async function startSync() {
   if (!sb) { toast('Keine Verbindung zum Server. Es wird nur auf diesem Gerät gespeichert.'); return; }
   const { data } = await sb.auth.getSession();
   if (!data.session) { showLogin(); return; }
-  online = true; await loadRemote(); listen();
+  online = true; await loadRemote(); listen(); fetchGoogle();
 }
 
 // ---------- Hilfen ----------
@@ -314,15 +355,29 @@ function itemsFor(d) {
     out.push(Object.assign({ id: 'w:' + slot, slot, s: o ? o.s : s, e: o ? o.e : e }, extra));
   };
   const kz = kitaZeit(), P = (k) => S.persons[k];
-  if (kitaDay && P(wk.bringt[w])) std('bringt', kz.von - 60, kz.von, { person: wk.bringt[w], text: P(wk.bringt[w]).name + ' bringt' });
+  // Google-Termine: Rollen (bringt/holt ab/Bett) ersetzen den Standard, der Rest kommt dazu
+  const roleOver = {}, gItems = [];
+  googleFor(d).filter((g) => !g.allDay).forEach((g) => {
+    const s = Math.max(START, g.start), e = Math.min(END, g.end);
+    if (e <= START || s >= END) return;
+    const m = matchTitle(g.title);
+    if (m.person && m.role && !m.sym) { roleOver[m.role] = { id: 'g:' + g.uid, google: true, title: g.title, s, e: Math.max(e, s + 30), person: m.person }; return; }
+    gItems.push({ id: 'g:' + g.uid, google: true, title: g.title, s, e: Math.max(e, s + 30), person: m.sym ? null : m.person, withPerson: m.sym ? m.person : null, sym: m.sym, unknown: !m.person && !m.sym });
+  });
+  const roleText = { bringt: ' bringt', abholen: ' holt ab', bett: ': ins Bett' };
+  Object.keys(roleOver).forEach((r) => { const o = roleOver[r]; o.text = P(o.person).name + roleText[r]; out.push(o); });
+  const realStd = std;
+  const stdG = (slot, s, e, extra) => { if (!roleOver[slot]) realStd(slot, s, e, extra); };
+  if (kitaDay && P(wk.bringt[w])) stdG('bringt', kz.von - 60, kz.von, { person: wk.bringt[w], text: P(wk.bringt[w]).name + ' bringt' });
   if (kitaDay) out.push({ s: kz.von, e: kz.bis, kita: true });
-  if (kitaDay && P(wk.abholen[w])) std('abholen', kz.bis, kz.bis + 60, { person: wk.abholen[w], text: P(wk.abholen[w]).name + ' holt ab' });
+  if (kitaDay && P(wk.abholen[w])) stdG('abholen', kz.bis, kz.bis + 60, { person: wk.abholen[w], text: P(wk.abholen[w]).name + ' holt ab' });
   if (wk.nachm[w]) {
-    const ns = kitaDay ? kz.bis + 60 : 900;
-    std('nachm', Math.min(ns, END - 60), Math.min(ns + 120, END), { sym: wk.nachm[w] });
+    const ns = Math.min(kitaDay ? kz.bis + 60 : 900, END - 60), ne = Math.min(ns + 120, END);
+    if (!gItems.some((g) => g.s < ne && g.e > ns)) std('nachm', ns, ne, { sym: wk.nachm[w] });
   }
-  if (P(wk.bett[w])) std('bett', 1140, 1200, { person: wk.bett[w], text: P(wk.bett[w]).name + ': ins Bett' });
+  if (P(wk.bett[w])) stdG('bett', 1140, 1200, { person: wk.bett[w], text: P(wk.bett[w]).name + ': ins Bett' });
   S.entries.filter((x) => x.date === iso(d)).forEach((x) => out.push({ id: 'e:' + x.id, s: x.start, e: x.end, sym: x.sym, own: true }));
+  gItems.forEach((g) => out.push(g));
   // Spalten bei Überschneidung
   out.sort((a, b) => a.s - b.s || (b.e - b.s) - (a.e - a.s));
   const lanesEnd = [];
@@ -368,7 +423,9 @@ function render() {
     const dname = compact ? DAYS_SHORT[d.getDay()] : DAYS_LONG[d.getDay()];
     const ddate = compact ? d.getDate() + '.' + (d.getMonth() + 1) + '.' : d.getDate() + '. ' + MONTHS[d.getMonth()];
     const tagC = compact ? (isToday(d) ? '<span class="tag today">HEUTE</span>' : '') : tag;
-    html += '<div class="dayhead ' + cls + '" style="' + (compact ? 'padding:0 8px' : '') + '"><div style="display:flex;flex-direction:column;min-width:0"><span class="name">' + dname + ' ' + icon + '</span><span class="date">' + ddate + '</span></div>' + tagC + '</div>';
+    const allDay = googleFor(d).filter((g) => g.allDay).map((g) => esc(g.title)).join(', ');
+    const dateLine = allDay ? ddate + ' · <b>' + allDay + '</b>' : ddate;
+    html += '<div class="dayhead ' + cls + '" style="' + (compact ? 'padding:0 8px' : '') + '"><div style="display:flex;flex-direction:column;min-width:0"><span class="name">' + dname + ' ' + icon + '</span><span class="date" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + dateLine + '</span></div>' + tagC + '</div>';
   });
 
   // Zeitspalte
@@ -407,7 +464,13 @@ function render() {
         col += '<div class="card kitablock tall" style="top:' + top + 'px;height:' + hgt + 'px;left:' + left + ';width:' + width + '"><svg width="' + (tiny ? 30 : 44) + '" height="' + (tiny ? 30 : 44) + '" viewBox="0 0 24 24" fill="none" stroke="#2F6FB0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + KITA_PATH + '</svg><span class="lbl"' + lblStyle + '>Kita</span></div>';
         return;
       }
-      if (it.person) {
+      if (it.unknown) {
+        border = '#F0C98B';
+        inner = '<div style="width:' + isz(52, 38, 26) + 'px;height:' + isz(52, 38, 26) + 'px;flex-shrink:0;border-radius:10px;background:#FFF4E0;color:#C9851B;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:' + Math.round(isz(52, 38, 26) * 0.6) + 'px">?</div><span class="lbl"' + lblStyle + '>' + esc(it.title) + '</span>';
+      } else if (it.person && it.google && !it.text) {
+        border = S.persons[it.person].color;
+        inner = avatar(it.person, isz(56, 40, 28)) + '<span class="lbl"' + lblStyle + '>' + esc(S.persons[it.person].name) + '</span>';
+      } else if (it.person) {
         border = S.persons[it.person].color;
         inner = avatar(it.person, isz(56, 40, 28)) + '<span class="lbl"' + lblStyle + '>' + esc(compact ? S.persons[it.person].name : it.text) + '</span>';
       } else {
@@ -418,6 +481,7 @@ function render() {
         } else {
           border = s.color;
           inner = symSvg(it.sym, isz(52, 38, 26)) + '<span class="lbl"' + lblStyle + '>' + it.sym + '</span>';
+          if (it.withPerson && S.persons[it.withPerson] && !tiny) inner += avatar(it.withPerson, isz(40, 30, 24));
         }
       }
       if (it.own) inner += STAR;
@@ -434,7 +498,11 @@ function render() {
   grid.querySelectorAll('.day').forEach((el) => {
     el.addEventListener('click', (ev) => {
       const card = ev.target.closest('.card[data-n]');
-      if (card) { openEdit(days[+el.dataset.i], itemsCache[+el.dataset.i][+card.dataset.n]); return; }
+      if (card) {
+        const it = itemsCache[+el.dataset.i][+card.dataset.n];
+        if (it.google) openGoogleInfo(days[+el.dataset.i], it); else openEdit(days[+el.dataset.i], it);
+        return;
+      }
       const r = el.getBoundingClientRect();
       let m = START + (ev.clientY - r.top) / ppm;
       m = Math.floor(m / 30) * 30;
@@ -557,6 +625,18 @@ function openEdit(day, it) {
   }
   function close() { layer.innerHTML = ''; }
   draw();
+}
+
+function openGoogleInfo(day, it) {
+  const layer = $('layer');
+  layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet" style="width:min(560px,100%)">' +
+    '<div class="sub">' + DAYS_LONG[day.getDay()] + ', ' + day.getDate() + '. ' + MONTHS[day.getMonth()] + ' · ' + fmt(it.s) + ' bis ' + fmt(it.e) + ' Uhr</div>' +
+    '<h2 style="font-size:30px">' + esc(it.title) + '</h2>' +
+    '<div class="muted" style="font-size:18px">Dieser Termin kommt aus dem Google-Kalender „Nora“. Ändern oder löschen bitte dort.' +
+    (it.unknown ? ' Ein Bild bekommt er im Eltern-Bereich unter „Google-Kalender“.' : '') + '</div>' +
+    '<button class="done-btn" id="okBtn" style="width:200px;height:60px;font-size:22px">OK</button></div></div>';
+  $('okBtn').onclick = () => { layer.innerHTML = ''; };
+  $('ov').onclick = (ev) => { if (ev.target.id === 'ov') layer.innerHTML = ''; };
 }
 
 function sceneFor(m) { if (m < 480) return 'morgens'; if (m < 720) return 'vormittag'; if (m < 840) return 'mittag'; if (m < 1080) return 'nachmittag'; return 'abend'; }
@@ -758,8 +838,58 @@ function tabEintraege(el) {
 }
 
 function tabGoogle(el) {
-  el.innerHTML = '<h2>Google-Kalender</h2><div class="row" style="font-size:18px"><span style="width:14px;height:14px;border-radius:7px;background:#B5AB9A"></span>Noch nicht verbunden.</div>' +
-    '<div class="muted" style="font-size:18px">Die Verbindung zu Noras Google-Kalender kommt im nächsten Schritt, zusammen mit dem Online-Speicher (Supabase).</div>';
+  const fmtT = (d) => d ? String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '–';
+  const ok = !G.error && G.at;
+  let h = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2>Google-Kalender</h2><button class="pill-btn" id="gRefresh">Jetzt abrufen</button></div>' +
+    '<div class="row" style="font-size:18px"><span style="width:14px;height:14px;border-radius:7px;background:' + (ok ? '#3E8E52' : '#D6453D') + '"></span>' +
+    (ok ? 'Verbunden mit dem Kalender „Nora“ · zuletzt abgerufen ' + fmtT(G.at) + ' Uhr · ' + G.events.length + ' Termine'
+        : 'Keine Verbindung' + (G.error ? ' (' + esc(G.error) + ')' : '') + '. Ist die Funktion in Supabase eingerichtet und ICAL_URL eingetragen?') + '</div>';
+  // Nicht erkannte Termine (jeder Titel einmal)
+  const seen = {}, unknown = [];
+  G.events.forEach((g) => { const m = matchTitle(g.title); if (!m.person && !m.sym && !seen[g.title]) { seen[g.title] = 1; unknown.push(g); } });
+  h += '<h2 style="font-size:24px;margin-top:6px">Nicht erkannt (' + unknown.length + ')</h2>';
+  if (!unknown.length) h += '<div class="row muted" style="font-size:18px">Alle Termine haben ein Bild.</div>';
+  unknown.forEach((g, i) => {
+    const d = new Date(g.date + 'T00:00:00');
+    h += '<div class="row" style="border-color:#F0C98B"><div style="width:44px;height:44px;border-radius:12px;background:#FFF4E0;color:#C9851B;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:26px">?</div>' +
+      '<div style="flex:1;min-width:0"><div style="font-size:19px;font-weight:700">„' + esc(g.title) + '“</div><div class="muted">' + DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + '. ' + MONTHS[d.getMonth()] + (g.allDay ? ' · ganztägig' : ' · ' + fmt(g.start) + ' Uhr') + '</div></div>' +
+      '<button class="pill-btn" data-assign="' + i + '" style="background:#2F6FB0;color:#fff;border-color:#2F6FB0">Zuordnen</button></div>';
+  });
+  // Stichwörter
+  h += '<h2 style="font-size:24px;margin-top:6px">Stichwörter</h2><div class="muted">Steht eines dieser Wörter im Termin, bekommt er das passende Bild. Namen gelten immer automatisch.</div>';
+  const targets = Object.keys(S.persons).map((k) => [k, avatar(k, 36), S.persons[k].name]).concat(SYM_ACT().map((k) => [k, symSvg(k, 32), k]));
+  targets.forEach(([k, ic, label]) => {
+    const words = (S.stich && S.stich[k]) || [];
+    h += '<div class="row" style="flex-wrap:wrap">' + ic + '<span style="font-size:18px;font-weight:700;min-width:110px">' + esc(label) + '</span>' +
+      words.map((w, j) => '<span style="font-size:15px;padding:4px 6px 4px 10px;border-radius:999px;background:#F1ECE3;display:inline-flex;align-items:center;gap:4px">' + esc(w) + '<button data-rmw="' + k + '|' + j + '" aria-label="Entfernen" style="border:none;background:transparent;font-size:16px;cursor:pointer;color:#7A7468">×</button></span>').join('') +
+      '<span style="display:inline-flex;gap:6px;margin-left:auto"><input type="text" data-addw="' + k + '" placeholder="neues Stichwort" style="font-family:inherit;font-size:16px;border:2px solid #E2DBCF;border-radius:10px;padding:6px 10px;width:170px;-webkit-user-select:text;user-select:text">' +
+      '<button class="pill-btn" data-addbtn="' + k + '" style="height:40px">+</button></span></div>';
+  });
+  el.innerHTML = h;
+  $('gRefresh').onclick = async () => { $('gRefresh').textContent = 'Wird abgerufen …'; await fetchGoogle(); tabGoogle(el); };
+  el.querySelectorAll('[data-assign]').forEach((b) => b.onclick = () => {
+    const g = unknown[+b.dataset.assign];
+    const opts = targets.map(([k, ic, label]) => [k, ic.replace(/width="32" height="32"/, 'width="44" height="44"'), label]);
+    choose('Termin aus Google', '„' + g.title + '“ ist …', opts, null, (k) => {
+      if (!k) return;
+      S.stich[k] = (S.stich[k] || []).concat([g.title]);
+      save(); render(); tabGoogle(el);
+    });
+  });
+  const addWord = (k) => {
+    const inp = el.querySelector('[data-addw="' + k + '"]');
+    const w = inp.value.trim();
+    if (!w) return;
+    S.stich[k] = (S.stich[k] || []).concat([w]);
+    save(); render(); tabGoogle(el);
+  };
+  el.querySelectorAll('[data-addbtn]').forEach((b) => b.onclick = () => addWord(b.dataset.addbtn));
+  el.querySelectorAll('[data-addw]').forEach((i) => i.onkeydown = (ev) => { if (ev.key === 'Enter') addWord(i.dataset.addw); });
+  el.querySelectorAll('[data-rmw]').forEach((b) => b.onclick = () => {
+    const [k, j] = b.dataset.rmw.split('|');
+    S.stich[k] = S.stich[k].filter((_, n) => n !== +j);
+    save(); render(); tabGoogle(el);
+  });
 }
 
 function tabAnzeige(el) {
@@ -780,6 +910,7 @@ function tabAnzeige(el) {
 window.addEventListener('resize', render);
 setInterval(render, 60000);
 setInterval(loadRemote, 5 * 60000);
+setInterval(fetchGoogle, 15 * 60000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadRemote(); });
 render();
 startSync();
