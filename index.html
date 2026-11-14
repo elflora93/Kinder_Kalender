@@ -151,7 +151,9 @@ const SYM = {
   Garten:    { color: '#5E9A5E', path: '<path d="M12 21v-9"/><path d="M12 12C12 8 9 6 5 6c0 4 3 6 7 6z"/><path d="M12 10c0-3 2.5-5 6-5 0 3.5-2.5 5-6 5z"/><path d="M6 21h12"/>' },
   Schwimmen: { color: '#2A9D9A', path: '<path d="M2 18c2 0 2-1.5 4-1.5S8 18 10 18s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="16" cy="6" r="2"/><path d="M5 13l4-4 3 2 3-2"/>' },
   Arzt:      { color: '#2F6FB0', path: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M12 10.5v6M9 13.5h6"/>' },
-  Ausflug:   { color: '#D6453D', path: '<rect x="3" y="5" width="18" height="11" rx="2"/><path d="M3 11h18"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/>' }
+  'Bücherei': { color: '#B0487A', path: '<path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/>' },
+  Geburtstag: { color: '#D6453D', path: '<rect x="4" y="12" width="16" height="8" rx="2"/><path d="M4 16c1.5 1 2.5 1 4 0s2.5-1 4 0 2.5 1 4 0 2.5-1 4 0"/><path d="M8 12V9M12 12V9M16 12V9"/><path d="M8 4c1 1.2 1 2.4 0 3-1-.6-1-1.8 0-3zM12 4c1 1.2 1 2.4 0 3-1-.6-1-1.8 0-3zM16 4c1 1.2 1 2.4 0 3-1-.6-1-1.8 0-3z"/>' },
+  Sonstiges: { color: '#5B6573', path: '<circle cx="12" cy="12" r="9"/><circle cx="7.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="16.5" cy="12" r="1.3"/>' }
 };
 const KITA_PATH = '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>';
 const HOUSE_X = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5B6573" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Kita zu">' + KITA_PATH + '<path d="M3 3l18 18" stroke="#D6453D" stroke-width="2.5"/></svg>';
@@ -177,6 +179,7 @@ const ICONS = {
   einkaufen: '<path d="M3 4h2l2.5 11h10L20 7H6.3"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>'
 };
 function symInfo(k) {
+  if (k === 'Ausflug') k = 'Sonstiges'; // früheres Symbol
   if (SYM[k]) return Object.assign({ label: k }, SYM[k]);
   const a = S.acts && S.acts[k];
   if (a) return { label: a.name, color: a.color, path: ICONS[a.icon] || ICONS.stern, photo: a.photo };
@@ -401,6 +404,7 @@ function itemsFor(d) {
   const std = (slot, s, e, extra) => {
     const o = over[iso(d) + '|' + slot];
     if (o && o.del) return;
+    if (o && o.p && extra.person && S.persons[o.p]) { extra.person = o.p; extra.text = S.persons[o.p].name + ({ bringt: ' bringt', abholen: ' holt ab', bett: ': ins Bett' })[slot]; }
     out.push(Object.assign({ id: 'w:' + slot, slot, s: o ? o.s : s, e: o ? o.e : e }, extra));
   };
   const kz = kitaZeit(), P = (k) => S.persons[k];
@@ -630,13 +634,18 @@ function openPicker(day, startM) {
 }
 // ---------- Termin antippen: Zeit ändern oder löschen ----------
 function openEdit(day, it) {
-  let s = it.s, e = it.e, confirmDel = false;
+  let s = it.s, e = it.e, confirmDel = false, p = it.person || null;
+  const ROLE = { bringt: ' bringt', abholen: ' holt ab', bett: ': ins Bett' };
+  const canPick = !it.own && p && ROLE[it.slot];
   const layer = $('layer');
-  let icon, label;
-  if (it.person) { icon = avatar(it.person, 64); label = it.text; }
-  else if (symInfo(it.sym) && symInfo(it.sym).person) { icon = avatar(symInfo(it.sym).person, 64); label = S.persons[symInfo(it.sym).person].name; }
-  else { icon = symSvg(it.sym, 64); label = symLabel(it.sym); }
   function draw() {
+    let icon, label;
+    if (p) { icon = avatar(p, 64); label = canPick ? S.persons[p].name + ROLE[it.slot] : it.text; }
+    else if (symInfo(it.sym) && symInfo(it.sym).person) { icon = avatar(symInfo(it.sym).person, 64); label = S.persons[symInfo(it.sym).person].name; }
+    else { icon = symSvg(it.sym, 64); label = symLabel(it.sym); }
+    const picker = canPick ? '<div style="display:flex;flex-direction:column;gap:10px"><div class="step">Wer?</div><div style="display:flex;gap:12px;flex-wrap:wrap">' +
+      Object.keys(S.persons).map((k) => '<button data-p="' + k + '" style="display:flex;align-items:center;gap:10px;height:64px;padding:0 20px 0 8px;border-radius:32px;border:' + (k === p ? '4px solid #E0A422' : '2px solid #E2DBCF') + ';background:' + (k === p ? '#FFF6D6' : '#fff') + ';font-size:19px;font-weight:700;cursor:pointer">' + avatar(k, 44) + esc(S.persons[k].name) + '</button>').join('') +
+      '</div></div>' : '';
     const dur = e - s, dh = Math.floor(dur / 60), dm = dur % 60;
     const durT = (dh ? dh + (dh === 1 ? ' Stunde' : ' Stunden') : '') + (dh && dm ? ' ' : '') + (dm ? dm + ' Minuten' : '');
     layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet" style="width:min(640px,100%)">' +
@@ -647,6 +656,7 @@ function openEdit(day, it) {
       '<div class="timerow"><div class="step">Beginn <button data-a="s-">−</button><span class="val">' + fmt(s) + '</span><button data-a="s+">+</button></div>' +
         '<div class="step">Ende <button data-a="e-">−</button><span class="val">' + fmt(e) + '</span><button data-a="e+">+</button></div>' +
         '<span class="muted" style="font-size:18px;margin-left:auto">Dauer: ' + durT + '</span></div>' +
+      picker +
       (it.own ? '' : '<div class="muted" style="font-size:16px">Gilt nur für diesen Tag. Die Standard-Woche bleibt gleich.</div>') +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
         '<button id="delBtn" style="height:52px;padding:0 20px;border-radius:26px;border:2px solid ' + (confirmDel ? '#D6453D' : '#E2DBCF') + ';background:' + (confirmDel ? '#D6453D' : '#fff') + ';color:' + (confirmDel ? '#fff' : '#B3342D') + ';font-size:18px;font-weight:700;cursor:pointer">' + (confirmDel ? 'Wirklich löschen?' : 'Löschen') + '</button>' +
@@ -660,6 +670,7 @@ function openEdit(day, it) {
       if (a === 'e+' && e < END) e += 30;
       confirmDel = false; draw();
     });
+    layer.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => { p = b.dataset.p; confirmDel = false; draw(); });
     $('closeBtn').onclick = close;
     $('ov').onclick = (ev) => { if (ev.target.id === 'ov') close(); };
     $('delBtn').onclick = () => {
@@ -670,7 +681,7 @@ function openEdit(day, it) {
     };
     $('doneBtn').onclick = () => {
       if (it.own) S.entries.forEach((x) => { if ('e:' + x.id === it.id) { x.start = s; x.end = e; } });
-      else { S.over = S.over || {}; S.over[iso(day) + '|' + it.slot] = { s, e }; }
+      else { S.over = S.over || {}; S.over[iso(day) + '|' + it.slot] = canPick ? { s, e, p } : { s, e }; }
       save(); close(); render();
     };
   }
