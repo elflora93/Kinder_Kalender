@@ -84,6 +84,9 @@
   .side button { height: 52px; border-radius: 12px; border: none; background: transparent; text-align: left; padding: 0 14px; font-size: 19px; font-weight: 700; color: #4A463F; cursor: pointer; }
   .side button.on { background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(42,42,51,.08); }
   .side .back { margin-top: auto; border: 2px solid #D9D1C3; }
+  .side .tabs { display: flex; flex-direction: column; gap: 6px; }
+  .mtoggle { display: none; }
+  .icgrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
   .main { flex: 1; min-width: 0; overflow: auto; padding: 26px 30px; display: flex; flex-direction: column; gap: 18px; }
   .main h2 { margin: 0; font-size: 32px; }
   .cards3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
@@ -116,6 +119,69 @@
   #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 14px; font-size: 17px; z-index: 100; }
   .field { display: flex; flex-direction: column; gap: 6px; font-size: 17px; font-weight: 700; text-align: left; }
   .field input { font-family: inherit; font-size: 20px; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; -webkit-user-select: text; user-select: text; }
+
+  /* Handy: Hochformat (schmal) oder Querformat (niedrig) */
+  @media (max-width: 700px), (max-height: 500px) {
+    .parent { flex-direction: column; }
+    .side { width: auto; flex-direction: row; align-items: center; gap: 8px; padding: 8px 10px; position: relative; z-index: 3; box-shadow: 0 2px 8px rgba(42,42,51,.08); }
+    .side .brand { display: none; }
+    .mtoggle { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; height: 44px; padding: 0 12px; border-radius: 12px; border: 2px solid #D9D1C3; background: #fff; font-size: 17px; font-weight: 700; cursor: pointer; text-align: left; }
+    .mtoggle span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .side.open .mtoggle .chev { transform: rotate(180deg); }
+    .side .tabs { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #F1ECE3; padding: 6px 10px 12px; gap: 4px; box-shadow: 0 10px 24px rgba(42,42,51,.18); max-height: calc(100dvh - 70px); overflow: auto; }
+    .side.open .tabs { display: flex; }
+    .side .tabs button { height: 46px; font-size: 17px; }
+    .side .back { margin: 0; height: 44px; padding: 0 12px; font-size: 15px; white-space: nowrap; }
+    .side .back .long { display: none; }
+
+    .main { padding: 14px 12px 24px; gap: 12px; }
+    .main h2 { font-size: 23px !important; }
+    .main .muted { font-size: 14px !important; }
+    .main .row { padding: 10px; gap: 10px; font-size: 15px !important; }
+    .pill-btn { height: 40px; padding: 0 14px; font-size: 15px; }
+    .filebtn { height: 40px; font-size: 15px; }
+
+    .cards3 { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .cards3 .wide { grid-column: 1 / -1; }
+    .pcard { padding: 12px; gap: 10px; border-radius: 16px; }
+    .pcard input[type=text] { font-size: 17px; padding: 6px 8px; }
+    .pcard > span { font-size: 17px !important; }
+    .pcard > svg { width: 52px; height: 52px; }
+    .pcard .av { width: 72px !important; height: 72px !important; font-size: 32px !important; }
+    #addPerson, #addAct { min-height: 140px !important; font-size: 17px !important; }
+    .sw { width: 28px; height: 28px; }
+
+    .wk { grid-template-columns: 58px repeat(7, minmax(0, 1fr)); gap: 4px; }
+    .wk .hd { height: 32px; font-size: 14px; border-radius: 8px; }
+    .wk .rl { font-size: 12px; line-height: 1.15; overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto; }
+    .wk .cell { height: 48px; border-radius: 8px; border-width: 1.5px; }
+    .wk .cell .av { width: 30px !important; height: 30px !important; font-size: 14px !important; }
+    .wk .cell svg { width: 26px; height: 26px; }
+    .wk .cell > div:not(.av) { width: 28px !important; height: 28px !important; }
+    .timerow { gap: 12px; padding: 10px 12px; }
+    .step { font-size: 15px; gap: 6px; }
+    .step button { width: 38px; height: 38px; font-size: 20px; }
+    .step .val { width: 52px; font-size: 18px; }
+
+    .modes { gap: 6px; }
+    .modes button { min-width: 0; flex: 1 1 0; height: 46px; font-size: 14px; gap: 4px; padding: 0 4px; }
+    .modes button svg { width: 20px; height: 20px; }
+    .month { gap: 4px; }
+    .month .wd { font-size: 12px; }
+    .month .d { height: 44px; font-size: 15px; border-radius: 8px; }
+    .month .d svg { width: 14px; height: 14px; }
+
+    .opts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .opt { height: 92px; font-size: 14px; gap: 6px; border-radius: 12px; }
+    .main .opts .opt { height: 76px !important; padding: 0; }
+    .main .opts .opt span:first-child { font-size: 24px !important; }
+    .main .opts .opt span:last-child { font-size: 12px; }
+    .main .opts { gap: 5px; }
+    .sheet { padding: 18px 16px; gap: 14px; border-radius: 20px; }
+    .sheet h2 { font-size: 22px !important; }
+    .sheet .sub { font-size: 15px; }
+    .overlay { padding: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -734,9 +800,14 @@ let tab = 'personen';
 function openParent() {
   const layer = $('layer');
   const tabs = [['personen', 'Personen'], ['aktivitaeten', 'Aktivitäten'], ['woche', 'Standard-Woche'], ['besondere', 'Besondere Tage'], ['eintraege', 'Noras Einträge'], ['google', 'Google-Kalender'], ['anzeige', 'Anzeige']];
-  layer.innerHTML = '<div class="parent"><nav class="side"><div class="brand">Eltern-Bereich</div>' +
-    tabs.map(([k, l]) => '<button data-t="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + l + '</button>').join('') +
-    '<button class="back" id="backBtn">‹ Zurück zu Nora</button></nav><div class="main" id="pmain"></div></div>';
+  const curLabel = (tabs.find((t) => t[0] === tab) || tabs[0])[1];
+  layer.innerHTML = '<div class="parent"><nav class="side" id="pside"><div class="brand">Eltern-Bereich</div>' +
+    '<button class="mtoggle" id="mToggle" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>' + curLabel + '</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7A7468" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>' +
+    '<div class="tabs">' + tabs.map(([k, l]) => '<button data-t="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
+    '<button class="back" id="backBtn">‹ Zurück<span class="long"> zu Nora</span></button></nav><div class="main" id="pmain"></div></div>';
+  const side = $('pside');
+  $('mToggle').onclick = () => { const o = side.classList.toggle('open'); $('mToggle').setAttribute('aria-expanded', o ? 'true' : 'false'); };
+  $('pmain').addEventListener('click', () => side.classList.remove('open'));
   layer.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { tab = b.dataset.t; openParent(); });
   $('backBtn').onclick = () => { layer.innerHTML = ''; render(); };
   ({ personen: tabPersonen, aktivitaeten: tabAktivitaeten, woche: tabWoche, besondere: tabBesondere, eintraege: tabEintraege, google: tabGoogle, anzeige: tabAnzeige })[tab]($('pmain'));
@@ -813,10 +884,10 @@ function tabAktivitaeten(el) {
   });
   Object.keys(S.acts).forEach((k) => {
     const a = S.acts[k];
-    h += '<div class="pcard">' + symSvg(k, 72) +
+    h += '<div class="pcard wide">' + symSvg(k, 72) +
       '<input type="text" data-aname="' + k + '" value="' + esc(a.name) + '">' +
       '<div class="swatches">' + COLORS.map((c) => '<span class="sw' + (c === a.color ? ' on' : '') + '" data-ac="' + c + '" data-k="' + k + '" style="background:' + c + '"></span>').join('') + '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px">' + Object.keys(ICONS).map((ic) =>
+      '<div class="icgrid">' + Object.keys(ICONS).map((ic) =>
         '<button data-ai="' + ic + '" data-k="' + k + '" aria-label="' + ic + '" style="height:44px;border-radius:10px;cursor:pointer;background:#fff;border:' + (!a.photo && a.icon === ic ? '3px solid #2A2A33' : '2px solid #E2DBCF') + '"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="' + a.color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICONS[ic] + '</svg></button>').join('') + '</div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap"><label class="filebtn">Foto statt Symbol<input type="file" accept="image/*" data-aphoto="' + k + '"></label>' +
       (a.photo ? '<button class="pill-btn" data-aphotodel="' + k + '">Foto entfernen</button>' : '') + '</div>' +
