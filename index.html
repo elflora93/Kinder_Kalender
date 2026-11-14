@@ -230,6 +230,7 @@ const YAY = '<svg width="34" height="34" viewBox="0 0 32 32" fill="none" stroke=
   '<circle cx="14.2" cy="7.2" r="0.9" fill="#3E7A4E" stroke="none"/><circle cx="17.8" cy="7.2" r="0.9" fill="#3E7A4E" stroke="none"/>' +
   '<path d="M13.6 9.4q2.4 2.6 4.8 0z" fill="#D6453D" stroke="#D6453D" stroke-width="1"/>' +
   '<path d="M16 13v9M16 15.5L8.5 12 4 5M16 15.5L23.5 12 28 5M16 22l-4.5 7.5M16 22l4.5 7.5"/></svg>';
+const KITA_DAY = '<svg width="46" height="34" viewBox="0 0 44 32" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Kita-Tag" style="vertical-align:-8px"><ellipse cx="22" cy="28.5" rx="20" ry="2.5" stroke="#C9D8EA" stroke-width="1.6"/><path d="M27.5 1.2h8a1.6 1.6 0 0 1 1.6 1.6v3.2a1.6 1.6 0 0 1-1.6 1.6h-4.5l-2.4 2.3v-2.3h-1.1a1.6 1.6 0 0 1-1.6-1.6V2.8a1.6 1.6 0 0 1 1.6-1.6z" fill="#fff" stroke="#E07A3F" stroke-width="1.5"/><path d="M30 4.4h4.5" stroke="#E07A3F" stroke-width="1.3"/><path d="M4.5 5.5h6.5a1.5 1.5 0 0 1 1.5 1.5v2.6a1.5 1.5 0 0 1-1.5 1.5h-1.2v2l-2.2-2h-3.1a1.5 1.5 0 0 1-1.5-1.5V7a1.5 1.5 0 0 1 1.5-1.5z" fill="#fff" stroke="#8A5BB0" stroke-width="1.5"/><circle cx="22" cy="6.5" r="3.4" fill="#FFE7A8" stroke="#2F6FB0"/><path d="M22 10v10.5M22 20.5l-3 7.5M22 20.5l3 7.5M22 13l-4.5 4M22 13l4.5 4" stroke="#2F6FB0" stroke-width="2.3"/><circle cx="6.5" cy="16.5" r="2.6" fill="#8A5BB0" stroke="#8A5BB0"/><path d="M6.5 19.5v4.5M6.5 24l-2 4M6.5 24l2 4M6.5 21l-2.5 2M6.5 21l2.5 2" stroke="#8A5BB0"/><circle cx="13.5" cy="16.5" r="2.6" fill="#E07A3F" stroke="#E07A3F"/><path d="M13.5 19.5v4.5M13.5 24l-2 4M13.5 24l2 4M13.5 21l-2.5 2M13.5 21l2.5 2" stroke="#E07A3F"/><circle cx="30.5" cy="16.5" r="2.6" fill="#2A9D9A" stroke="#2A9D9A"/><path d="M30.5 19.5v4.5M30.5 24l-2 4M30.5 24l2 4M30.5 21l-2.5 2M30.5 21l2.5 2" stroke="#2A9D9A"/><circle cx="37.5" cy="16.5" r="2.6" fill="#5E9A5E" stroke="#5E9A5E"/><path d="M37.5 19.5v4.5M37.5 24l-2 4M37.5 24l2 4M37.5 21l-2.5 2M37.5 21l2.5 2" stroke="#5E9A5E"/></svg>';
 const DAYTYPES = {
   Urlaub: { label: 'Urlaub', special: 'urlaub', icon: () => CASE },
   KitaZu: { label: 'Kita zu', special: 'kita', icon: () => HOUSE_X }
@@ -545,7 +546,7 @@ function render() {
     const sp = specialOf(d), we = d.getDay() === 0 || d.getDay() === 6;
     const cls = isToday(d) ? 'today' : (sp || '');
     const icon = sp === 'kita' ? HOUSE_X : (sp === 'urlaub' ? CASE : '');
-    const weIcon = we ? ' ' + YAY : '';
+    const weIcon = we ? ' ' + YAY : (!sp ? ' ' + KITA_DAY : '');
     const tag = isToday(d) ? '<span class="tag today">HEUTE</span>' : (we ? '<span class="tag we">Wochenende</span>' : '');
     const dname = compact ? DAYS_SHORT[d.getDay()] : DAYS_LONG[d.getDay()];
     const ddate = compact ? d.getDate() + '.' + (d.getMonth() + 1) + '.' : d.getDate() + '. ' + MONTHS[d.getMonth()];
