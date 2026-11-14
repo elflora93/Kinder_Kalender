@@ -224,6 +224,12 @@ const SYM = {
 const KITA_PATH = '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>';
 const HOUSE_X = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5B6573" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Kita zu">' + KITA_PATH + '<path d="M3 3l18 18" stroke="#D6453D" stroke-width="2.5"/></svg>';
 const CASE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C86A12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Urlaub"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M8 7v13M16 7v13"/></svg>';
+const YAY = '<svg width="34" height="34" viewBox="0 0 32 32" fill="none" stroke="#3E7A4E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-label="Wochenende" style="vertical-align:-6px">' +
+  '<path d="M1 1.5l1.5 1.5M31 1.5l-1.5 1.5M6.5 1v1.8M25.5 1v1.8" stroke="#E07A3F" stroke-width="2"/>' +
+  '<circle cx="16" cy="8" r="5" fill="#FFE7A8"/>' +
+  '<circle cx="14.2" cy="7.2" r="0.9" fill="#3E7A4E" stroke="none"/><circle cx="17.8" cy="7.2" r="0.9" fill="#3E7A4E" stroke="none"/>' +
+  '<path d="M13.6 9.4q2.4 2.6 4.8 0z" fill="#D6453D" stroke="#D6453D" stroke-width="1"/>' +
+  '<path d="M16 13v9M16 15.5L8.5 12 4 5M16 15.5L23.5 12 28 5M16 22l-4.5 7.5M16 22l4.5 7.5"/></svg>';
 const DAYTYPES = {
   Urlaub: { label: 'Urlaub', special: 'urlaub', icon: () => CASE },
   KitaZu: { label: 'Kita zu', special: 'kita', icon: () => HOUSE_X }
@@ -539,13 +545,14 @@ function render() {
     const sp = specialOf(d), we = d.getDay() === 0 || d.getDay() === 6;
     const cls = isToday(d) ? 'today' : (sp || '');
     const icon = sp === 'kita' ? HOUSE_X : (sp === 'urlaub' ? CASE : '');
+    const weIcon = we ? ' ' + YAY : '';
     const tag = isToday(d) ? '<span class="tag today">HEUTE</span>' : (we ? '<span class="tag we">Wochenende</span>' : '');
     const dname = compact ? DAYS_SHORT[d.getDay()] : DAYS_LONG[d.getDay()];
     const ddate = compact ? d.getDate() + '.' + (d.getMonth() + 1) + '.' : d.getDate() + '. ' + MONTHS[d.getMonth()];
     const tagC = compact ? (isToday(d) ? '<span class="tag today">HEUTE</span>' : '') : tag;
     const allDay = googleFor(d).filter((g) => g.allDay && !matchTitle(g.title).day).map((g) => esc(g.title)).join(', ');
     const dateLine = allDay ? ddate + ' · <b>' + allDay + '</b>' : ddate;
-    html += '<div class="dayhead ' + cls + '" style="' + (compact ? 'padding:0 8px' : '') + '"><div style="display:flex;flex-direction:column;min-width:0"><span class="name">' + dname + ' ' + icon + '</span><span class="date" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + dateLine + '</span></div>' + tagC + '</div>';
+    html += '<div class="dayhead ' + cls + '" style="' + (compact ? 'padding:0 8px' : '') + '"><div style="display:flex;flex-direction:column;min-width:0"><span class="name">' + dname + weIcon + ' ' + icon + '</span><span class="date" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + dateLine + '</span></div>' + tagC + '</div>';
   });
 
   // Zeitspalte
