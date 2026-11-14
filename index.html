@@ -700,8 +700,9 @@ function openPicker(day, startM) {
 }
 // ---------- Termin antippen: Zeit ändern oder löschen ----------
 function openEdit(day, it) {
-  let s = it.s, e = it.e, confirmDel = false, p = it.person || null;
+  let s = it.s, e = it.e, confirmDel = false, p = it.person || null, more = false;
   const ROLE = { bringt: ' bringt', abholen: ' holt ab', bett: ': ins Bett' };
+  const ASK = { bringt: 'Wer bringt dich in die Kita?', abholen: 'Wer holt dich ab?', bett: 'Wer bringt dich ins Bett?' };
   const canPick = !it.own && p && ROLE[it.slot];
   const layer = $('layer');
   function draw() {
@@ -709,19 +710,24 @@ function openEdit(day, it) {
     if (p) { icon = avatar(p, 64); label = canPick ? S.persons[p].name + ROLE[it.slot] : it.text; }
     else if (symInfo(it.sym) && symInfo(it.sym).person) { icon = avatar(symInfo(it.sym).person, 64); label = S.persons[symInfo(it.sym).person].name; }
     else { icon = symSvg(it.sym, 64); label = symLabel(it.sym); }
-    const picker = canPick ? '<div style="display:flex;flex-direction:column;gap:10px"><div class="step">Wer?</div><div style="display:flex;gap:12px;flex-wrap:wrap">' +
-      Object.keys(S.persons).map((k) => '<button data-p="' + k + '" style="display:flex;align-items:center;gap:10px;height:64px;padding:0 20px 0 8px;border-radius:32px;border:' + (k === p ? '4px solid #E0A422' : '2px solid #E2DBCF') + ';background:' + (k === p ? '#FFF6D6' : '#fff') + ';font-size:19px;font-weight:700;cursor:pointer">' + avatar(k, 44) + esc(S.persons[k].name) + '</button>').join('') +
-      '</div></div>' : '';
+    // Bringen / Abholen / Ins Bett: große Personen-Kacheln, Uhrzeit nur über die drei Punkte
+    const picker = canPick ? '<div class="step" style="font-size:22px">' + ASK[it.slot] + '</div><div class="tiles">' +
+      Object.keys(S.persons).map((k) => '<button class="tile' + (k === p ? ' on' : '') + '" data-p="' + k + '">' + avatar(k, 72) + '<span>' + esc(S.persons[k].name) + '</span></button>').join('') +
+      '</div>' : '';
+    const showTime = !canPick || more;
     const dur = e - s, dh = Math.floor(dur / 60), dm = dur % 60;
     const durT = (dh ? dh + (dh === 1 ? ' Stunde' : ' Stunden') : '') + (dh && dm ? ' ' : '') + (dm ? dm + ' Minuten' : '');
     layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet" style="width:min(640px,100%)">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
         '<div style="display:flex;align-items:center;gap:16px">' + icon +
           '<div><div class="sub">' + DAYS_LONG[day.getDay()] + ', ' + day.getDate() + '. ' + MONTHS[day.getMonth()] + '</div><h2 style="font-size:30px">' + esc(label) + '</h2></div></div>' +
-        '<button class="round" id="closeBtn" aria-label="Schließen"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
-      '<div class="timerow"><div class="step">Beginn <button data-a="s-">−</button><span class="val">' + fmt(s) + '</span><button data-a="s+">+</button></div>' +
+        '<div style="display:flex;gap:10px;align-items:center">' +
+          (canPick ? '<button id="moreBtn" aria-label="Zeit einstellen" style="width:44px;height:44px;border-radius:22px;border:none;background:' + (more ? '#EDE7DD' : 'transparent') + ';cursor:pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="#9A9387"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>' : '') +
+          '<button class="round" id="closeBtn" aria-label="Schließen"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>' +
+        '</div></div>' +
+      (showTime ? '<div class="timerow"><div class="step">Beginn <button data-a="s-">−</button><span class="val">' + fmt(s) + '</span><button data-a="s+">+</button></div>' +
         '<div class="step">Ende <button data-a="e-">−</button><span class="val">' + fmt(e) + '</span><button data-a="e+">+</button></div>' +
-        '<span class="muted" style="font-size:18px;margin-left:auto">Dauer: ' + durT + '</span></div>' +
+        '<span class="muted" style="font-size:18px;margin-left:auto">Dauer: ' + durT + '</span></div>' : '') +
       picker +
       (it.own ? '' : '<div class="muted" style="font-size:16px">Gilt nur für diesen Tag. Die Standard-Woche bleibt gleich.</div>') +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
@@ -737,6 +743,7 @@ function openEdit(day, it) {
       confirmDel = false; draw();
     });
     layer.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => { p = b.dataset.p; confirmDel = false; draw(); });
+    if ($('moreBtn')) $('moreBtn').onclick = () => { more = !more; draw(); };
     $('closeBtn').onclick = close;
     $('ov').onclick = (ev) => { if (ev.target.id === 'ov') close(); };
     $('delBtn').onclick = () => {
