@@ -116,6 +116,35 @@
   .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 300px; align-self: center; }
   .keypad button { height: 64px; border-radius: 16px; border: 2px solid var(--line); background: #fff; font-size: 26px; font-weight: 700; cursor: pointer; }
   .hidden { display: none !important; }
+
+  /* Startseite (Übersicht) */
+  #home { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.4fr 1.15fr .85fr; gap: 16px; }
+  #app:not(.homeview) #home, #app.homeview #grid, #app.homeview #prevBtn, #app.homeview #nextBtn, #app.homeview #todayBtn, #app.homeview #homeBtn { display: none !important; }
+  .panel { background: #fff; border: 2px solid var(--line); border-radius: 22px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; }
+  .panel h2 { margin: 0; font-size: clamp(22px, 2.4vw, 30px); display: flex; align-items: center; gap: 10px; }
+  .panel.plan { cursor: pointer; }
+  .panel.plan.today { border: 4px solid var(--sun); }
+  .hlist { display: flex; flex-direction: column; gap: 8px; overflow: auto; min-height: 0; flex: 1; }
+  .hrow { display: flex; align-items: center; gap: 12px; padding: 6px 12px; min-height: 58px; border-radius: 14px; border: 3px solid #ccc; background: #fff; flex-shrink: 0; }
+  .hrow .t { font-size: 19px; font-weight: 700; color: var(--muted); width: 58px; flex-shrink: 0; }
+  .hrow .l { font-size: clamp(18px, 1.9vw, 23px); font-weight: 700; line-height: 1.15; }
+  .hrow.past { opacity: .4; }
+  .hrow.kitarow { background: #EAF3FB; border-color: #9DBBDD; }
+  .hint { margin-top: auto; text-align: center; color: var(--muted); font-size: 16px; }
+  .wnow { display: flex; align-items: center; gap: 14px; }
+  .wnow .temp { font-size: clamp(44px, 5vw, 64px); font-weight: 700; line-height: 1; }
+  .wday { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 14px; background: var(--bg); }
+  .wday .n { font-size: 19px; font-weight: 700; width: 70px; flex-shrink: 0; }
+  .wday .mm { font-size: 20px; font-weight: 700; white-space: nowrap; }
+  .wday svg, .wnow svg, .hours svg { flex-shrink: 0; }
+  .rain { display: inline-flex; align-items: center; gap: 4px; font-size: 17px; font-weight: 700; color: #2F6FB0; margin-left: auto; white-space: nowrap; }
+  .hours { display: flex; gap: 3px; align-items: flex-end; height: 92px; }
+  .hours .c { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; font-size: 12px; color: var(--muted); height: 100%; }
+  .hours .bar { width: 70%; background: #8DB8E6; border-radius: 3px 3px 0 0; }
+  .hours .tt { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .todo-empty { flex: 1; border: 3px dashed var(--line); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 20px; font-weight: 700; text-align: center; }
+  @media (max-width: 900px) { #home { grid-template-columns: 1fr 1fr; overflow: auto; } #home .plan { grid-column: 1 / -1; min-height: 360px; } }
+  @media (max-width: 600px) { #home { grid-template-columns: 1fr; } }
   #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 14px; font-size: 17px; z-index: 100; }
   .field { display: flex; flex-direction: column; gap: 6px; font-size: 17px; font-weight: 700; text-align: left; }
   .field input { font-family: inherit; font-size: 20px; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; -webkit-user-select: text; user-select: text; }
@@ -189,6 +218,7 @@
   <div class="top">
     <h1 id="title"></h1>
     <div class="nav">
+      <button class="round" id="homeBtn" aria-label="Startseite"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg></button>
       <button class="pill-btn hidden" id="todayBtn">Heute</button>
       <button class="round" id="prevBtn" aria-label="Frühere Tage"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
       <button class="round" id="nextBtn" aria-label="Spätere Tage"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
@@ -196,6 +226,7 @@
     </div>
   </div>
   <div class="grid" id="grid"></div>
+  <div id="home"></div>
 </div>
 <div id="layer"></div>
 <div id="toast" class="hidden"></div>
@@ -530,9 +561,12 @@ function itemsFor(d) {
 }
 
 let offset = 0, ppm = 0.7;
+let view = (S.settings && S.settings.start === 'kalender') ? 'cal' : 'home';
 const itemsCache = [];
 
 function render() {
+  $('app').classList.toggle('homeview', view === 'home');
+  if (view === 'home') return renderHome();
   const grid = $('grid');
   const h = grid.clientHeight - 88;
   ppm = Math.max(0.4, h / (END - START));
@@ -660,6 +694,116 @@ function sceneNow() {
   const m = nowMinutes();
   if (m < 480) return 'morgens'; if (m < 720) return 'vormittag'; if (m < 840) return 'mittag'; if (m < 1080) return 'nachmittag'; return 'abend';
 }
+
+// ---------- Startseite: Tagesplan, Wetter, Aufgaben ----------
+function itemLook(it, size) {
+  if (it.kita) return { icon: '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="#2F6FB0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + KITA_PATH + '</svg>', label: 'Kita', color: '#9DBBDD' };
+  if (it.unknown) return { icon: '<div style="width:' + size + 'px;height:' + size + 'px;flex-shrink:0;border-radius:10px;background:#FFF4E0;color:#C9851B;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:' + Math.round(size * 0.6) + 'px">?</div>', label: esc(it.title), color: '#F0C98B' };
+  if (it.person && S.persons[it.person]) return { icon: avatar(it.person, size), label: esc(it.google && !it.text ? S.persons[it.person].name : it.text), color: S.persons[it.person].color };
+  const s = symInfo(it.sym) || { color: '#C9851B' };
+  if (s.person && S.persons[s.person]) return { icon: avatar(s.person, size), label: esc(S.persons[s.person].name), color: S.persons[s.person].color };
+  let icon = symSvg(it.sym, size);
+  if (it.withPerson && S.persons[it.withPerson]) icon += avatar(it.withPerson, Math.round(size * 0.75));
+  return { icon, label: esc(symLabel(it.sym)), color: s.color };
+}
+
+const WETTER_DEFAULT = { name: 'Magdeburg', lat: 52.13, lon: 11.62 };
+let wetter = null, wetterZeit = 0;
+try { const w = JSON.parse(localStorage.getItem('kk-wetter') || 'null'); if (w) { wetter = w.d; wetterZeit = w.t; } } catch (e) { /* egal */ }
+async function ladeWetter(force) {
+  if (!force && Date.now() - wetterZeit < 25 * 60000) return;
+  const o = S.settings.ort || WETTER_DEFAULT;
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + o.lat + '&longitude=' + o.lon +
+    '&current=temperature_2m,precipitation,weather_code,is_day' +
+    '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max' +
+    '&timezone=Europe%2FBerlin&forecast_days=2';
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return;
+    wetter = await r.json(); wetterZeit = Date.now();
+    try { localStorage.setItem('kk-wetter', JSON.stringify({ d: wetter, t: wetterZeit })); } catch (e) { /* egal */ }
+    if (view === 'home') render();
+  } catch (e) { /* offline: alte Daten bleiben */ }
+}
+function wetterSvg(code, size, nacht) {
+  const sun = nacht
+    ? '<path d="M13 4a6 6 0 1 0 7 7 7 7 0 0 1-7-7z" fill="#FFE9A8" stroke="#C9A227"/>'
+    : '<circle cx="12" cy="10" r="4.5" fill="#FFD866" stroke="#E0A422"/><path d="M12 2v1.6M12 16.4V18M4 10h1.6M18.4 10H20M6.3 4.3l1.1 1.1M16.6 14.6l1.1 1.1M6.3 15.7l1.1-1.1M16.6 5.4l1.1-1.1" stroke="#E0A422"/>';
+  const cloud = (x, y, f) => '<path transform="translate(' + x + ' ' + y + ')" d="M7 18h10a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.6 1.4A3.3 3.3 0 0 0 7 18z" fill="' + f + '" stroke="#8C97A6"/>';
+  let g;
+  if (code === 0) g = sun;
+  else if (code <= 2) g = '<g transform="translate(-3 -3) scale(.8)">' + sun + '</g>' + cloud(2, 2, '#fff');
+  else if (code === 3 || code === 45 || code === 48) g = cloud(0, -1, '#EEF0F3');
+  else if (code >= 71 && code <= 77 || code === 85 || code === 86) g = cloud(0, -3, '#EEF0F3') + '<path d="M8 19.5v3M6.7 21h2.6M14 19.5v3M12.7 21h2.6" stroke="#5B8FD0"/>';
+  else if (code >= 95) g = cloud(0, -3, '#D9DEE6') + '<path d="M12 16l-2 4h3l-2 4" stroke="#E0A422" stroke-width="1.8"/>';
+  else g = cloud(0, -3, '#EEF0F3') + '<path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3" stroke="#2F6FB0" stroke-width="1.8"/>';
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + g + '</svg>';
+}
+const TROPFEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#8DB8E6" stroke="#2F6FB0" stroke-width="1.8"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>';
+
+function wetterPanel() {
+  const o = S.settings.ort || WETTER_DEFAULT;
+  if (!wetter || !wetter.current) return '<div class="panel"><h2>Wetter</h2><div class="muted" style="font-size:18px">Wetter wird geladen …</div></div>';
+  const c = wetter.current, d = wetter.daily, h = wetter.hourly;
+  const nacht = c.is_day === 0;
+  let html = '<div class="panel"><h2>Wetter <span class="muted" style="font-size:16px;font-weight:400;margin-left:auto">' + esc(o.name) + '</span></h2>' +
+    '<div class="wnow">' + wetterSvg(c.weather_code, 84, nacht) + '<div><div class="temp">' + Math.round(c.temperature_2m) + '°</div>' +
+    '<div class="muted" style="font-size:17px">' + (c.precipitation > 0 ? 'Es regnet gerade' : 'Gerade trocken') + '</div></div></div>';
+  // Nächste Stunden: Temperatur und Regen
+  const jetzt = new Date(); const key = iso(jetzt) + 'T' + String(jetzt.getHours()).padStart(2, '0') + ':00';
+  let i0 = h.time.indexOf(key); if (i0 < 0) i0 = 0;
+  // Abends: den Vormittag von morgen zeigen (was zieht Nora morgen an?)
+  if (jetzt.getHours() >= 17) { const m = h.time.indexOf(iso(addDays(today0(), 1)) + 'T06:00'); if (m >= 0) i0 = m; }
+  const idx = []; for (let k = i0 + 1; k < Math.min(h.time.length, i0 + 13); k += 2) idx.push(k);
+  const maxP = Math.max(1, ...idx.map((k) => h.precipitation[k] || 0));
+  html += '<div class="hours">' + idx.map((k) => {
+    const mm = h.precipitation[k] || 0, pr = h.precipitation_probability[k] || 0;
+    const bh = mm > 0 ? Math.max(4, Math.round(30 * mm / Math.max(maxP, 2))) : 0;
+    return '<div class="c"><span class="tt">' + Math.round(h.temperature_2m[k]) + '°</span>' + wetterSvg(h.weather_code[k], 32, +h.time[k].slice(11, 13) < 7 || +h.time[k].slice(11, 13) > 18) +
+      '<span style="color:#2F6FB0;font-weight:700">' + (pr >= 20 ? pr + '%' : '&nbsp;') + '</span><div class="bar" style="height:' + bh + 'px"></div><span>' + h.time[k].slice(11, 13) + ' Uhr</span></div>';
+  }).join('') + '</div>';
+  ['Heute', 'Morgen'].forEach((n, k) => {
+    if (!d || !d.time[k]) return;
+    html += '<div class="wday"><span class="n">' + n + '</span>' + wetterSvg(d.weather_code[k], 40) +
+      '<span class="mm">' + Math.round(d.temperature_2m_max[k]) + '° <span class="muted" style="font-weight:400">/ ' + Math.round(d.temperature_2m_min[k]) + '°</span></span>' +
+      '<span class="rain">' + TROPFEN + (d.precipitation_probability_max[k] || 0) + '% · ' + String(Math.round((d.precipitation_sum[k] || 0) * 10) / 10).replace('.', ',') + ' mm</span></div>';
+  });
+  return html + '</div>';
+}
+
+function renderHome() {
+  const t0 = today0(), now = nowMinutes();
+  const abends = now >= 17 * 60;
+  const d = abends ? addDays(t0, 1) : t0;
+  const sp = specialOf(d), we = d.getDay() === 0 || d.getDay() === 6;
+  const dayIcon = sp === 'kita' ? HOUSE_X : sp === 'urlaub' ? CASE : we ? YAY : KITA_DAY;
+  $('title').innerHTML = scene(sceneNow(), 52) + 'Heute ist ' + DAYS_LONG[t0.getDay()] + '<span class="muted" style="font-weight:400;font-size:.7em;margin-left:6px">' + fmt(now) + ' Uhr</span>';
+  const items = itemsFor(d).slice().sort((a, b) => a.s - b.s);
+  let list = items.map((it) => {
+    const L = itemLook(it, 40);
+    const past = !abends && it.e <= now;
+    const zeit = it.kita ? fmt(it.s) : fmt(it.s);
+    return '<div class="hrow' + (it.kita ? ' kitarow' : '') + (past ? ' past' : '') + '" style="' + (it.kita ? '' : 'border-color:' + L.color) + '"><span class="t">' + zeit + '</span>' +
+      '<span style="display:flex;gap:6px;align-items:center">' + L.icon + '</span><span class="l">' + L.label + (it.kita ? ' bis ' + fmt(it.e) : '') + '</span>' + (it.own ? STAR : '') + '</div>';
+  }).join('');
+  if (!items.length) list = '<div class="todo-empty" style="font-size:22px">' + (abends ? 'Morgen' : 'Heute') + ' ist nichts eingetragen.</div>';
+  const plan = '<div class="panel plan' + (abends ? '' : ' today') + '" id="planPanel"><h2>' + (abends ? 'Morgen' : 'Heute') + ' <span style="font-weight:400;color:var(--muted);font-size:.7em">' + DAYS_LONG[d.getDay()] + ', ' + d.getDate() + '. ' + MONTHS[d.getMonth()] + '</span><span style="margin-left:auto">' + dayIcon + '</span></h2>' +
+    '<div class="hlist">' + list + '</div><div class="hint">Antippen für den ganzen Kalender</div></div>';
+  const todo = '<div class="panel"><h2><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3E8E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>Aufgaben</h2>' +
+    '<div class="todo-empty"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#B5AB9A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>Hier kommen bald<br>Noras Aufgaben hin.</div></div>';
+  $('home').innerHTML = plan + wetterPanel() + todo;
+  $('planPanel').onclick = () => { view = 'cal'; offset = 0; lastActive = Date.now(); render(); };
+  ladeWetter();
+}
+
+// Ohne Bedienung zurück zur Startseite
+let lastActive = Date.now();
+window.addEventListener('pointerdown', () => { lastActive = Date.now(); }, true);
+setInterval(() => {
+  if (view === 'cal' && S.settings.start !== 'kalender' && Date.now() - lastActive > 3 * 60000 && !$('layer').innerHTML) { view = 'home'; offset = 0; render(); }
+}, 20000);
+$('homeBtn').onclick = () => { view = 'home'; offset = 0; render(); };
 
 // ---------- Blättern / Wischen ----------
 $('prevBtn').onclick = () => { offset--; render(); };
@@ -1167,13 +1311,34 @@ function tabAnzeige(el) {
   let h = '<h2>Anzeige</h2><div class="muted" style="font-size:18px">Wie viele Tage sollen nebeneinander zu sehen sein? Für das iPad passen 3 Tage gut, für einen großen Monitor an der Wand zum Beispiel 7 Tage.</div>' +
     '<div class="opts" style="grid-template-columns:repeat(7,minmax(0,1fr))">';
   for (let k = 1; k <= 7; k++) h += '<button class="opt' + (k === cur ? ' on' : '') + '" data-days="' + k + '" style="height:96px"><span style="font-size:34px">' + k + '</span><span>' + (k === 1 ? 'Tag' : 'Tage') + '</span></button>';
+  const st = S.settings.start === 'kalender' ? 'kalender' : 'uebersicht';
+  const ort = S.settings.ort || WETTER_DEFAULT;
   h += '</div><div class="muted">Die Einstellung gilt für dieses Gerät.</div>' +
+    '<h2 style="margin-top:24px">Startseite</h2><div class="muted" style="font-size:18px">Übersicht: heute (ab 17 Uhr morgen), Wetter und Aufgaben. Ohne Bedienung springt der Kalender nach 3 Minuten dorthin zurück.</div>' +
+    '<div class="opts" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button class="opt' + (st === 'uebersicht' ? ' on' : '') + '" data-start="uebersicht" style="height:72px">Übersicht</button><button class="opt' + (st === 'kalender' ? ' on' : '') + '" data-start="kalender" style="height:72px">Kalender</button></div>' +
+    '<h2 style="margin-top:24px">Ort für das Wetter</h2><div class="row" style="font-size:18px;flex-wrap:wrap">Jetzt: <b>' + esc(ort.name) + '</b>' +
+    '<span class="field" style="margin-left:auto;display:flex;gap:8px"><input id="ortIn" placeholder="Ort suchen" style="width:200px"><button class="pill-btn" id="ortBtn">Übernehmen</button></span></div>' +
+    '<div class="muted" id="ortMsg"></div>' +
     '<h2 style="margin-top:24px">Konto</h2><div class="row" style="font-size:18px"><span style="width:14px;height:14px;border-radius:7px;background:' + (online ? '#3E8E52' : '#B5AB9A') + '"></span>' + (online ? 'Angemeldet – Daten sind auf allen Geräten gleich.' : 'Nicht angemeldet – Daten nur auf diesem Gerät.') +
     (online ? '<button class="pill-btn" id="logoutBtn" style="margin-left:auto">Abmelden</button>' : '') + '</div>';
   el.innerHTML = h;
   const lo = document.getElementById('logoutBtn');
   if (lo) lo.onclick = async () => { await sb.auth.signOut(); online = false; document.getElementById('layer').innerHTML = ''; showLogin(); };
   el.querySelectorAll('[data-days]').forEach((b) => b.onclick = () => { S.settings.days = +b.dataset.days; cache(); tabAnzeige(el); });
+  el.querySelectorAll('[data-start]').forEach((b) => b.onclick = () => { S.settings.start = b.dataset.start; cache(); tabAnzeige(el); });
+  document.getElementById('ortBtn').onclick = async () => {
+    const q = document.getElementById('ortIn').value.trim(), msg = document.getElementById('ortMsg');
+    if (!q) return;
+    msg.textContent = 'Suche …';
+    try {
+      const r = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&language=de&name=' + encodeURIComponent(q));
+      const j = await r.json();
+      const g = j.results && j.results[0];
+      if (!g) { msg.textContent = 'Ort nicht gefunden.'; return; }
+      S.settings.ort = { name: g.name, lat: Math.round(g.latitude * 100) / 100, lon: Math.round(g.longitude * 100) / 100 };
+      cache(); wetterZeit = 0; ladeWetter(true); tabAnzeige(el);
+    } catch (e) { msg.textContent = 'Keine Verbindung.'; }
+  };
 }
 
 // ---------- Start ----------
@@ -1181,6 +1346,7 @@ window.addEventListener('resize', render);
 setInterval(render, 60000);
 setInterval(loadRemote, 5 * 60000);
 setInterval(fetchGoogle, 15 * 60000);
+setInterval(() => ladeWetter(true), 30 * 60000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadRemote(); });
 render();
 startSync();
