@@ -138,14 +138,15 @@
   .wday .mm { font-size: 20px; font-weight: 700; white-space: nowrap; }
   .wday svg, .wnow svg, .hours svg { flex-shrink: 0; }
   .rain { display: inline-flex; align-items: center; gap: 4px; font-size: 17px; font-weight: 700; color: #2F6FB0; margin-left: auto; white-space: nowrap; }
-  .hours { display: flex; gap: 3px; align-items: flex-end; height: 84px; flex-shrink: 0; }
+  .hours { display: flex; gap: 3px; align-items: flex-end; height: 84px; flex-shrink: 0; margin: 4px 0; }
   .hours .c { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; font-size: 12px; color: var(--muted); height: 100%; }
   .hours .bar { width: 70%; background: #8DB8E6; border-radius: 3px 3px 0 0; }
   .hours .tt { font-size: 13px; font-weight: 700; color: var(--ink); }
-  .anz { background: #F6F2EB; border-radius: 16px; padding: 8px 10px; }
+  .anz { background: #F6F2EB; border-radius: 16px; padding: 8px 12px; display: flex; align-items: center; gap: 12px; margin-top: auto; }
+  .anz-kind { flex-shrink: 0; }
   .anz-t { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-  .anz-r { display: flex; flex-wrap: wrap; gap: 4px 2px; justify-content: space-around; }
-  .anz-k { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; text-align: center; width: 78px; line-height: 1.1; -webkit-hyphens: auto; hyphens: auto; }
+  .anz-r { display: flex; flex-direction: column; gap: 3px; }
+  .anz-k { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; line-height: 1.1; }
   .anz-k svg { flex-shrink: 0; }
   .todo-empty { flex: 1; border: 3px dashed var(--line); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 20px; font-weight: 700; text-align: center; }
   @media (max-width: 900px) { #home { grid-template-columns: 1fr 1fr; overflow: auto; } #home .plan { grid-column: 1 / -1; min-height: 360px; } }
@@ -785,11 +786,52 @@ function anziehenFuer(dIso) {
   else if (regen) out.push('matschhose', 'stiefel');
   return out.slice(0, 5);
 }
+function kindSvg(liste, h) {
+  const has = (k) => liste.includes(k);
+  const SK = '#F6D3B3', SKS = '#B5835A';
+  const TOP = has('winterjacke') ? ['#E8A0A0', '#B3342D'] : has('regenjacke') ? ['#FFE066', '#C9851B'] : has('jacke') ? ['#9FC3EA', '#2F6FB0'] : has('pullover') ? ['#B9DDB9', '#3E7A4E'] : ['#FFD866', '#C9851B'];
+  const kurz = has('tshirt') && !has('regenjacke');
+  const latz = has('schneehose') || has('matschhose');
+  const HOSE = has('schneehose') ? ['#E8A0A0', '#B3342D'] : has('matschhose') ? ['#9FC3EA', '#2F6FB0'] : ['#7E9CC9', '#4A6A9C'];
+  let g = '';
+  // Beine und Hose
+  if (kurz && !latz) {
+    g += '<path d="M21 70h8v18h-8zM31 70h8v18h-8z" fill="' + SK + '" stroke="' + SKS + '"/>';
+    g += '<path d="M19 58h22l1 13h-10l-2-4-2 4H18z" fill="' + HOSE[0] + '" stroke="' + HOSE[1] + '"/>';
+  } else {
+    g += '<path d="M19 58h22l1 31h-10l-2-22-2 22H18z" fill="' + HOSE[0] + '" stroke="' + HOSE[1] + '"/>';
+  }
+  // Füße
+  if (has('stiefel')) g += '<path d="M19 79h10v13H17v-2a3 3 0 0 1 2-3zM31 79h10v8a3 3 0 0 1 2 3v2H31z" fill="#7CC47C" stroke="#3E7A4E"/>';
+  else g += '<path d="M18 88h11v5H16a2.5 2.5 0 0 1 2-5zM31 88h11a2.5 2.5 0 0 1 2 5H31z" fill="#5B6573" stroke="#2A2A33"/>';
+  // Oberteil mit Armen
+  if (kurz) {
+    g += '<path d="M12 55l3-15M48 55l-3-15" stroke="' + SK + '" stroke-width="5.5"/><path d="M12 55l3-15M48 55l-3-15" stroke="' + SKS + '" stroke-width="0.6" opacity="0"/>';
+    g += '<path d="M19 31h22l6 4-3 7-3-2 1 20H18l1-20-3 2-3-7z" fill="' + TOP[0] + '" stroke="' + TOP[1] + '"/>';
+  } else {
+    g += '<path d="M19 31h22l7 4 4 20-6 1-4-14 1 18H17l1-18-4 14-6-1 4-20z" fill="' + TOP[0] + '" stroke="' + TOP[1] + '"/>';
+    if (has('winterjacke') || has('regenjacke') || has('jacke')) g += '<path d="M30 32v28" stroke="' + TOP[1] + '"/>';
+    if (has('winterjacke')) g += '<path d="M18 44h24M18 51h24" stroke="' + TOP[1] + '"/>';
+  }
+  if (latz) g += '<path d="M22 58v-8h16v8M23 50l-1-18M37 50l1-18" fill="' + HOSE[0] + '" stroke="' + HOSE[1] + '"/>';
+  // Hände
+  const HA = has('handschuhe') ? ['#C7B3E6', '#6A4C9C'] : [SK, SKS];
+  const hy = kurz ? 57 : 58;
+  g += '<circle cx="' + (kurz ? 12 : 11) + '" cy="' + hy + '" r="3.6" fill="' + HA[0] + '" stroke="' + HA[1] + '"/><circle cx="' + (kurz ? 48 : 49) + '" cy="' + hy + '" r="3.6" fill="' + HA[0] + '" stroke="' + HA[1] + '"/>';
+  // Kopf
+  g += '<path d="M27 28h6v4h-6z" fill="' + SK + '"/><circle cx="30" cy="18" r="11" fill="' + SK + '" stroke="' + SKS + '"/>';
+  g += '<path d="M19 17a11 11 0 0 1 22 0c-3-3.5-7-4.5-11-3.2C26 12.5 22 13.5 19 17z" fill="#8B5A33" stroke="#6B4425"/>';
+  if (has('muetze')) g += '<path d="M18.6 15a11.4 10.5 0 0 1 22.8 0z" fill="#C7B3E6" stroke="#6A4C9C"/><path d="M18 13.5h24v4H18z" fill="#8A6BC0" stroke="#6A4C9C"/><circle cx="30" cy="4" r="2.6" fill="#fff" stroke="#6A4C9C"/>';
+  if (has('kappe')) g += '<path d="M21 11a9 7 0 0 1 18 0z" fill="#FFD866" stroke="#C9851B"/><ellipse cx="30" cy="11.5" rx="16" ry="2.6" fill="#FFD866" stroke="#C9851B"/>';
+  g += '<circle cx="26" cy="20" r="1.3" fill="#2A2A33"/><circle cx="34" cy="20" r="1.3" fill="#2A2A33"/><path d="M26.5 24q3.5 3 7 0" stroke="#2A2A33" stroke-width="1.3"/>';
+  g += '<circle cx="23.5" cy="23" r="1.6" fill="#F2A7A0" opacity=".6"/><circle cx="36.5" cy="23" r="1.6" fill="#F2A7A0" opacity=".6"/>';
+  return '<svg width="' + Math.round(h * 0.6) + '" height="' + h + '" viewBox="0 0 60 100" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-label="Kind angezogen">' + g + '</svg>';
+}
 function anziehenHtml(dIso, titel) {
   const liste = anziehenFuer(dIso);
   if (!liste) return '';
-  return '<div class="anz"><div class="anz-t">' + titel + '</div><div class="anz-r">' + liste.map((k) =>
-    '<div class="anz-k"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + KLEID[k].svg + '</svg><span>' + KLEID[k].w + '</span></div>').join('') + '</div></div>';
+  return '<div class="anz"><div class="anz-kind">' + kindSvg(liste, 168) + '</div><div style="min-width:0;flex:1"><div class="anz-t">' + titel + '</div><div class="anz-r">' + liste.map((k) =>
+    '<div class="anz-k"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + KLEID[k].svg + '</svg><span>' + KLEID[k].w.replace('&shy;', '') + '</span></div>').join('') + '</div></div></div>';
 }
 
 function wetterPanel() {
@@ -800,8 +842,7 @@ function wetterPanel() {
   let html = '<div class="panel"><h2>Wetter <span class="muted" style="font-size:16px;font-weight:400;margin-left:auto">' + esc(o.name) + '</span></h2>' +
     '<div class="wnow">' + wetterSvg(c.weather_code, 68, nacht) + '<div><div class="temp">' + Math.round(c.temperature_2m) + '°</div>' +
     '<div class="muted" style="font-size:17px">' + (c.precipitation > 0 ? 'Es regnet gerade' : 'Gerade trocken') + '</div></div></div>';
-  const abends = new Date().getHours() >= 17;
-  html += abends ? anziehenHtml(iso(addDays(today0(), 1)), 'Morgen anziehen') : anziehenHtml(iso(today0()), 'Heute anziehen');
+
   // Nächste Stunden: Temperatur und Regen
   const jetzt = new Date(); const key = iso(jetzt) + 'T' + String(jetzt.getHours()).padStart(2, '0') + ':00';
   let i0 = h.time.indexOf(key); if (i0 < 0) i0 = 0;
@@ -821,6 +862,8 @@ function wetterPanel() {
       '<span class="mm">' + Math.round(d.temperature_2m_max[k]) + '° <span class="muted" style="font-weight:400">/ ' + Math.round(d.temperature_2m_min[k]) + '°</span></span>' +
       '<span class="rain">' + TROPFEN + (d.precipitation_probability_max[k] || 0) + '% · ' + String(Math.round((d.precipitation_sum[k] || 0) * 10) / 10).replace('.', ',') + ' mm</span></div>';
   });
+  const abends = new Date().getHours() >= 17;
+  html += abends ? anziehenHtml(iso(addDays(today0(), 1)), 'Morgen anziehen') : anziehenHtml(iso(today0()), 'Heute anziehen');
   return html + '</div>';
 }
 
