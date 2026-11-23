@@ -119,7 +119,7 @@
   .hidden { display: none !important; }
 
   /* Startseite (Übersicht) */
-  #home { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.3fr 1.3fr .8fr; gap: 16px; }
+  #home { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.2fr 1.25fr .95fr; gap: 16px; }
   #app:not(.homeview) #home, #app.homeview #grid, #app.homeview #prevBtn, #app.homeview #nextBtn, #app.homeview #todayBtn, #app.homeview #homeBtn { display: none !important; }
   .panel { background: #fff; border: 2px solid var(--line); border-radius: 22px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; }
   .panel h2 { margin: 0; font-size: clamp(22px, 2.4vw, 30px); display: flex; align-items: center; gap: 10px; }
@@ -161,13 +161,21 @@
   .tl-c .card.past { opacity: .45; }
   .tl-z { font-size: 14px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
   .tlist { display: flex; flex-direction: column; gap: 8px; overflow: auto; min-height: 0; }
-  .task { display: flex; align-items: center; gap: 12px; padding: 6px 12px; min-height: 96px; border-radius: 14px; border: 2px solid var(--line); background: #fff; font-family: inherit; text-align: left; cursor: pointer; }
+  .task { display: flex; align-items: center; gap: 10px; padding: 4px 10px; min-height: clamp(62px, 11vh, 96px); border-radius: 14px; border: 2px solid var(--line); background: #fff; font-family: inherit; text-align: left; cursor: pointer; }
   .task .w { font-size: clamp(18px, 1.6vw, 24px); font-weight: 700; line-height: 1.15; flex: 1; color: var(--ink); }
   .task .box { width: 44px; height: 44px; border-radius: 10px; border: 3px solid #B5AB9A; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .task.ok { background: #EDF6EC; border-color: #9ACB9F; }
   .task.ok .w { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 2px; }
   .task.ok .box { background: var(--green); border-color: var(--green); }
   .task svg { flex-shrink: 0; }
+  .task > svg:first-child { width: clamp(48px, min(5.2vw, 9vh), 84px); height: auto; }
+  .task .w { min-width: 0; }
+  .fest { position: fixed; inset: 0; pointer-events: none; z-index: 200; overflow: hidden; }
+  .fest i { position: absolute; top: -20px; opacity: .95; animation-name: konfetti; animation-timing-function: cubic-bezier(.25,.6,.45,1); animation-fill-mode: forwards; }
+  @keyframes konfetti { to { transform: translate(var(--x), 110vh) rotate(var(--r)); } }
+  .fest-text { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.4); font-size: clamp(56px, 10vw, 120px); font-weight: 700; color: #FF6F61; text-shadow: 0 4px 0 #fff, 0 6px 18px rgba(42,42,51,.25); -webkit-text-stroke: 2px #fff; white-space: nowrap; animation: lob 2.4s ease-out forwards; }
+  .fest-text.gross { color: #43B581; animation-duration: 3.4s; }
+  @keyframes lob { 0% { transform: translate(-50%, -50%) scale(.4); opacity: 0; } 15% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; } 25% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%, -60%) scale(1); opacity: 0; } }
   .super { margin-top: auto; text-align: center; font-size: 22px; font-weight: 700; color: #3E7A4E; display: flex; align-items: center; justify-content: center; gap: 6px; }
   .todo-empty { flex: 1; border: 3px dashed var(--line); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 20px; font-weight: 700; text-align: center; }
   /* Handy und schmale Bildschirme: alles untereinander, Seite scrollt */
@@ -396,7 +404,10 @@ function sportAm(d) {
   if (w >= 5 || (S.special && S.special[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')])) return false;
   const o = (S.over || {})[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '|sport'];
   if (o && typeof o.on === 'boolean') return o.on;
-  return !!(S.week && S.week.sport && S.week.sport[w]);
+  if (S.week && S.week.sport && S.week.sport[w]) return true;
+  // Google-Termin mit „Sport“ oder „Turnen“ an diesem Tag
+  const di = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  return typeof G !== 'undefined' && G.events.some((e) => e.date === di && /sport|turnen/i.test(String(e.title || '')));
 }
 const SPORT_PATH = '<path d="M3 16.5c0-1.2.8-2 2-2.3l4.2-1L11 9h3.2l.8 2.3c1.7.4 3.6.6 5.3.6a1.7 1.7 0 0 1 1.7 1.7V16a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 16z" fill="#FFE1C2"/><path d="M3 15.5h19M10 11.5l1.5 1.2M11.4 10l1.5 1.2M7.5 13.3 9 14.5"/><path d="M3 19.5h19" stroke-width="1.4" opacity=".5"/>';
 const sportSvg = (size) => '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="#D2691E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-label="Sport">' + SPORT_PATH + '</svg>';
@@ -950,7 +961,7 @@ function aufgabenFuer() {
   const now = new Date(), h = now.getHours(), t0 = today0();
   if (h < 12) return { block: 'm', titel: 'Morgens', d: t0, liste: [['anziehen', 'Anziehen'], ['zaehne', 'Zähne putzen'], ['haare', 'Haare kämmen']] };
   const liste = [['zaehne', 'Zähne putzen'], ['haare', 'Haare kämmen'], ['schlafanzug', 'Schlafanzug anziehen'], ['rauslegen', 'Sachen für morgen rauslegen']];
-  if (sportAm(addDays(t0, 1))) liste.push(['rucksack', 'Rucksack für Sport packen']);
+  if (sportAm(addDays(t0, 1))) liste.push(['rucksack', 'Sportsachen packen']);
   return { block: 'a', titel: 'Abends', d: t0, liste };
 }
 function aufgabenPanel() {
@@ -965,8 +976,31 @@ function aufgabenPanel() {
   if (fertig === A.liste.length) h += '<div class="super">' + STAR + ' Super gemacht! ' + STAR + '</div>';
   return h + '</div>';
 }
+const LOB = ['Juhu!', 'Super!', 'Prima!', 'Yeah!', 'Toll!', 'Klasse!', 'Spitze!'];
+function feiern(text, gross) {
+  document.querySelectorAll('.fest').forEach((f) => f.remove());
+  const box = document.createElement('div');
+  box.className = 'fest';
+  const farben = ['#FF6F61', '#FFCB3D', '#43B581', '#4F8EF7', '#A78BFA', '#FF8FB1'];
+  let h = '<div class="fest-text' + (gross ? ' gross' : '') + '">' + text + '</div>';
+  const n = gross ? 140 : 70;
+  for (let i = 0; i < n; i++) {
+    const x = Math.random() * 100, d = Math.random() * 0.5, t = 1.6 + Math.random() * 1.4, r = Math.random() * 720 - 360;
+    const w = 6 + Math.random() * 8, rund = Math.random() < 0.35;
+    h += '<i style="left:' + x + '%;width:' + w + 'px;height:' + (rund ? w : w * 0.5) + 'px;background:' + farben[i % farben.length] + ';border-radius:' + (rund ? '50%' : '2px') + ';animation-delay:' + d + 's;animation-duration:' + t + 's;--r:' + r + 'deg;--x:' + (Math.random() * 120 - 60) + 'px"></i>';
+  }
+  box.innerHTML = h;
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), gross ? 3600 : 2600);
+}
 function aufgabeUmschalten(key) {
+  const neu = !S.done[key];
   if (S.done[key]) delete S.done[key]; else S.done[key] = true;
+  if (neu) {
+    const A = aufgabenFuer(), base = iso(A.d) + '|' + A.block + '|';
+    const alle = A.liste.every(([k]) => S.done[base + k]);
+    feiern(alle ? 'Alles geschafft!' : LOB[Math.floor(Math.random() * LOB.length)], alle);
+  }
   // Alte Haken (älter als 3 Tage) aufräumen
   const grenze = iso(addDays(today0(), -3));
   Object.keys(S.done).forEach((k) => { if (k.slice(0, 10) < grenze) delete S.done[k]; });
