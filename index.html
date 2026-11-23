@@ -407,7 +407,9 @@ function sportAm(d) {
   if (S.week && S.week.sport && S.week.sport[w]) return true;
   // Google-Termin mit „Sport“ oder „Turnen“ an diesem Tag
   const di = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  return typeof G !== 'undefined' && G.events.some((e) => e.date === di && /sport|turnen/i.test(String(e.title || '')));
+  const istSport = (t) => /sport|turn/i.test(String(t || ''));
+  if ((S.entries || []).some((x) => x.date === di && (istSport(x.sym) || istSport(symLabel(x.sym))))) return true;
+  return typeof G !== 'undefined' && G.events.some((e) => e.date === di && istSport(e.title));
 }
 const SPORT_PATH = '<path d="M3 16.5c0-1.2.8-2 2-2.3l4.2-1L11 9h3.2l.8 2.3c1.7.4 3.6.6 5.3.6a1.7 1.7 0 0 1 1.7 1.7V16a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 16z" fill="#FFE1C2"/><path d="M3 15.5h19M10 11.5l1.5 1.2M11.4 10l1.5 1.2M7.5 13.3 9 14.5"/><path d="M3 19.5h19" stroke-width="1.4" opacity=".5"/>';
 const sportSvg = (size) => '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="#D2691E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-label="Sport">' + SPORT_PATH + '</svg>';
@@ -1052,6 +1054,23 @@ function renderHome() {
   $('todoPanel').querySelectorAll('[data-t]').forEach((b) => b.onclick = (ev) => { ev.stopPropagation(); aufgabeUmschalten(b.dataset.t); });
   ladeWetter();
 }
+
+// ---------- Neue Version automatisch laden ----------
+const BUILD = '2026-11-23-1850';
+async function pruefeUpdate() {
+  try {
+    const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const m = (await r.text()).match(/const BUILD = '([^']+)'/);
+    if (m && m[1] !== BUILD) {
+      // nur neu laden, wenn gerade niemand etwas eingibt
+      const warte = () => { if ($('layer').innerHTML || Date.now() - lastActive < 60000) return setTimeout(warte, 30000); location.reload(); };
+      warte();
+    }
+  } catch (e) { /* offline */ }
+}
+setTimeout(pruefeUpdate, 20000);
+setInterval(pruefeUpdate, 10 * 60000);
 
 // Ohne Bedienung zurück zur Startseite
 let lastActive = Date.now();
