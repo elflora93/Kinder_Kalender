@@ -790,7 +790,7 @@ const KLEID = {
   jacke:       { w: 'Jacke',       svg: '<path d="M8.5 3 4.5 5 2.5 18l3 .6L7.5 10v11h9V10l2 8.6 3-.6-2-13-4-2-3.5 3z" fill="#9FC3EA" stroke="#2F6FB0"/><path d="M12 6v15M9.5 13h1M13.5 13h1" stroke="#2F6FB0"/>' },
   winterjacke: { w: 'Winter&shy;jacke', svg: '<path d="M8 4.5 4 6.5 2.5 18.5l3.2.6L7.5 11v10h9V11l1.8 8.1 3.2-.6L20 6.5l-4-2" fill="#E8A0A0" stroke="#B3342D"/><path d="M8 4.5a4 3.5 0 0 1 8 0L12 7z" fill="#E8A0A0" stroke="#B3342D"/><path d="M12 7v14M7.5 14h9M7.5 17.5h9" stroke="#B3342D"/>' },
   regenjacke:  { w: 'Regen&shy;jacke',  svg: '<path d="M8 4.5 4 6.5 2.5 18.5l3.2.6L7.5 11v10h9V11l1.8 8.1 3.2-.6L20 6.5l-4-2" fill="#FFE066" stroke="#C9851B"/><path d="M8 4.5a4 3.5 0 0 1 8 0L12 7z" fill="#FFE066" stroke="#C9851B"/><path d="M12 7v14" stroke="#C9851B"/>' },
-  muetze:      { w: 'Mütze',       svg: '<path d="M5 17a7 7 0 0 1 14 0z" fill="#C7B3E6" stroke="#6A4C9C"/><path d="M4 17h16v3.5H4z" fill="#8A6BC0" stroke="#6A4C9C"/><circle cx="12" cy="7.5" r="2" fill="#fff" stroke="#6A4C9C"/>' },
+  muetze:      { w: 'Mütze',       svg: '<path d="M5 17a7 7 0 0 1 14 0z" fill="#C7B3E6" stroke="#6A4C9C"/><path d="M4 17h16v3.5H4z" fill="#8A6BC0" stroke="#6A4C9C"/>' },
   handschuhe:  { w: 'Hand&shy;schuhe',  svg: '<path d="M8.5 21v-3.5L5.3 12.4a1.7 1.7 0 0 1 2.8-1.9l1.4 1.8V6.5a3 3 0 0 1 6 0v8.3a4 4 0 0 1-2 3.4V21z" fill="#C7B3E6" stroke="#6A4C9C"/><path d="M8.5 18.5h5" stroke="#6A4C9C"/>' },
   kappe:       { w: 'Sonnenhut',   svg: '<path d="M6 14a6 5.5 0 0 1 12 0z" fill="#FFD866" stroke="#C9851B"/><path d="M2.5 15.5c3 1.5 16 1.5 19 0" stroke="#C9851B"/>' },
   matschhose:  { w: 'Matsch&shy;hose',  svg: '<path d="M7 5h10l1 16h-4.5L12 12l-1.5 9H6z" fill="#9FC3EA" stroke="#2F6FB0"/><path d="M8 5 7.5 2M16 5l.5-3M7 8h10" stroke="#2F6FB0"/>' },
@@ -882,7 +882,6 @@ function kindSvg(liste, h) {
     const MC = has('winterjacke') ? '#E8743B' : '#9B7FD1';
     g += '<path d="M16.2 19.5C16.2 11.5 22.4 6.5 30 6.5s13.8 5 13.8 13z" ' + F(MC) + '/><rect x="15" y="16.5" width="30" height="6.5" rx="3.2" ' + F(dk(MC, 0.88)) + '/>';
     g += '<path d="M19 17v6M22 17v6M25 17v6M28 17v6M31 17v6M34 17v6M37 17v6M40 17v6" stroke="' + dk(MC) + '" stroke-width=".9" opacity=".7"/>';
-    g += '<circle cx="30" cy="6" r="3.6" ' + F(dk(MC, 0.92)) + '/>';
     g += '<path d="M15.7 23c-.5 3.6.6 7 2.6 8.6l1.2-6.4z M44.3 23c.5 3.6-.6 7-2.6 8.6l-1.2-6.4z" fill="' + HAIR + '"/>';
   }
   // Sonnenhut
