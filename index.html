@@ -57,6 +57,7 @@
   .card { position: absolute; display: flex; align-items: center; gap: 10px; padding: 0 10px; background: #fff; border: 3px solid #ccc; border-radius: 12px; overflow: hidden; z-index: 2; cursor: default; }
   .card .lbl { font-size: clamp(16px, 1.7vw, 21px); font-weight: 700; line-height: 1.1; }
   .card.tall { flex-direction: column; justify-content: center; text-align: center; gap: 6px; }
+  .sportbadge { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 8px; padding: 6px 10px; border-radius: 12px; background: #FFF1E3; border: 2px solid #F0A04B; color: #B4561A; font-weight: 700; }
   .card.kitablock { background: rgba(255,255,255,.6); border: 2px dashed #8DB5DA; color: var(--blue); z-index: 1; }
   .card .star { margin-left: auto; flex-shrink: 0; }
   .card.tall .star { position: absolute; top: 6px; right: 6px; margin: 0; }
@@ -122,6 +123,7 @@
   #app:not(.homeview) #home, #app.homeview #grid, #app.homeview #prevBtn, #app.homeview #nextBtn, #app.homeview #todayBtn, #app.homeview #homeBtn { display: none !important; }
   .panel { background: #fff; border: 2px solid var(--line); border-radius: 22px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; }
   .panel h2 { margin: 0; font-size: clamp(22px, 2.4vw, 30px); display: flex; align-items: center; gap: 10px; }
+  .panel h2 svg { flex-shrink: 0; }
   .panel.plan { cursor: pointer; }
   .panel.plan.today { border: 4px solid var(--sun); }
   .hlist { display: flex; flex-direction: column; gap: 8px; overflow: auto; min-height: 0; flex: 1; }
@@ -148,6 +150,24 @@
   .anz-r { display: flex; flex-direction: column; gap: 3px; }
   .anz-k { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; line-height: 1.1; }
   .anz-k svg { flex-shrink: 0; }
+  .tlbox { flex: 1; min-height: 0; overflow: hidden; }
+  .tl { display: grid; grid-template-columns: 34px 1fr; gap: 6px; }
+  .tl-t { position: relative; }
+  .tl-t div { position: absolute; right: 0; transform: translateY(-50%); font-size: 14px; font-weight: 700; color: var(--muted); }
+  .tl-c { position: relative; border-radius: 14px; border: 2px solid var(--line); overflow: hidden; }
+  .tl-c .card { gap: 8px; padding: 0 8px; }
+  .tl-c .card .lbl { font-size: clamp(15px, 1.6vw, 19px); }
+  .tl-c .card.past { opacity: .45; }
+  .tl-z { font-size: 14px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+  .tlist { display: flex; flex-direction: column; gap: 8px; overflow: auto; min-height: 0; }
+  .task { display: flex; align-items: center; gap: 10px; padding: 6px 10px; min-height: 60px; border-radius: 14px; border: 2px solid var(--line); background: #fff; font-family: inherit; text-align: left; cursor: pointer; }
+  .task .w { font-size: 18px; font-weight: 700; line-height: 1.15; flex: 1; color: var(--ink); }
+  .task .box { width: 36px; height: 36px; border-radius: 10px; border: 3px solid #B5AB9A; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .task.ok { background: #EDF6EC; border-color: #9ACB9F; }
+  .task.ok .w { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 2px; }
+  .task.ok .box { background: var(--green); border-color: var(--green); }
+  .task svg { flex-shrink: 0; }
+  .super { margin-top: auto; text-align: center; font-size: 22px; font-weight: 700; color: #3E7A4E; display: flex; align-items: center; justify-content: center; gap: 6px; }
   .todo-empty { flex: 1; border: 3px dashed var(--line); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 20px; font-weight: 700; text-align: center; }
   @media (max-width: 900px) { #home { grid-template-columns: 1fr 1fr; overflow: auto; } #home .plan { grid-column: 1 / -1; min-height: 360px; } }
   @media (max-width: 600px) { #home { grid-template-columns: 1fr; } }
@@ -344,6 +364,7 @@ function defaults() {
       abholen: ['P', 'J', 'M', 'J', 'J', null, null],
       nachm:   [null, 'Schwimmen', null, 'Garten', null, null, null],
       bett:    ['M', 'P', 'M', 'P', 'P', 'M', 'P'],
+      sport:   [false, false, false, false, false, false, false],
       kita:    { von: 420, bis: 900 }
     },
     special: {},
@@ -359,12 +380,23 @@ S.settings = S.settings || { days: 3 };
 S.over = S.over || {};
 S.stich = S.stich || { J: ['Oma'], Schwimmen: ['Schwimmkurs'], Freunde: ['Playdate', 'spielen'] };
 S.acts = S.acts || {};
+S.done = S.done || {};
 const kitaZeit = () => (S.week && S.week.kita) || { von: 420, bis: 900 };
+// Kita-Sport: Standard-Woche, für einzelne Tage änderbar (Kita-Block antippen)
+function sportAm(d) {
+  const w = (d.getDay() + 6) % 7;
+  if (w >= 5 || (S.special && S.special[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')])) return false;
+  const o = (S.over || {})[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '|sport'];
+  if (o && typeof o.on === 'boolean') return o.on;
+  return !!(S.week && S.week.sport && S.week.sport[w]);
+}
+const SPORT_PATH = '<path d="M3 16.5c0-1.2.8-2 2-2.3l4.2-1L11 9h3.2l.8 2.3c1.7.4 3.6.6 5.3.6a1.7 1.7 0 0 1 1.7 1.7V16a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 16z" fill="#FFE1C2"/><path d="M3 15.5h19M10 11.5l1.5 1.2M11.4 10l1.5 1.2M7.5 13.3 9 14.5"/><path d="M3 19.5h19" stroke-width="1.4" opacity=".5"/>';
+const sportSvg = (size) => '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="#D2691E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-label="Sport">' + SPORT_PATH + '</svg>';
 
 // ---------- Supabase ----------
 const SUPABASE_URL = 'https://zybcckfhjmdrrsayrquu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IJZcClgYEFDN2OSPTmGMhQ_ASrXPNlc';
-const PARTS = ['persons', 'week', 'special', 'entries', 'over', 'stich', 'acts'];
+const PARTS = ['persons', 'week', 'special', 'entries', 'over', 'stich', 'acts', 'done'];
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 const synced = {};
 let online = false;
@@ -395,6 +427,7 @@ async function loadRemote() {
   S.over = S.over || {};
   S.stich = S.stich || {};
   S.acts = S.acts || {};
+  S.done = S.done || {};
   cache();
   // Beim allerersten Start die Beispieldaten hochladen
   if (PARTS.some((p) => !have[p])) save();
@@ -533,7 +566,7 @@ function itemsFor(d) {
   const realStd = std;
   const stdG = (slot, s, e, extra) => { if (!roleOver[slot]) realStd(slot, s, e, extra); };
   if (kitaDay && P(wk.bringt[w])) stdG('bringt', kz.von - 60, kz.von, { person: wk.bringt[w], text: P(wk.bringt[w]).name + ' bringt' });
-  if (kitaDay) out.push({ s: kz.von, e: kz.bis, kita: true });
+  if (kitaDay) out.push({ s: kz.von, e: kz.bis, kita: true, sport: sportAm(d) });
   if (kitaDay && P(wk.abholen[w])) stdG('abholen', kz.bis, kz.bis + 60, { person: wk.abholen[w], text: P(wk.abholen[w]).name + ' holt ab' });
   if (wk.nachm[w]) {
     const ns = Math.min(kitaDay ? kz.bis + 60 : 900, END - 60), ne = Math.min(ns + 120, END);
@@ -639,7 +672,8 @@ function render() {
       let inner, border;
       const lblStyle = tiny ? ' style="font-size:13px"' : (compact ? ' style="font-size:15px"' : '');
       if (it.kita) {
-        col += '<div class="card kitablock tall" style="top:' + top + 'px;height:' + hgt + 'px;left:' + left + ';width:' + width + '"><svg width="' + (tiny ? 30 : 44) + '" height="' + (tiny ? 30 : 44) + '" viewBox="0 0 24 24" fill="none" stroke="#2F6FB0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + KITA_PATH + '</svg><span class="lbl"' + lblStyle + '>Kita</span></div>';
+        col += '<div class="card kitablock tall" data-kita="1" style="cursor:pointer;top:' + top + 'px;height:' + hgt + 'px;left:' + left + ';width:' + width + '"><svg width="' + (tiny ? 30 : 44) + '" height="' + (tiny ? 30 : 44) + '" viewBox="0 0 24 24" fill="none" stroke="#2F6FB0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + KITA_PATH + '</svg><span class="lbl"' + lblStyle + '>Kita</span>' +
+          (it.sport ? '<div class="sportbadge">' + sportSvg(tiny ? 30 : 44) + '<span' + lblStyle + '>Sport</span></div>' : '') + '</div>';
         return;
       }
       if (it.unknown) {
@@ -675,6 +709,7 @@ function render() {
 
   grid.querySelectorAll('.day').forEach((el) => {
     el.addEventListener('click', (ev) => {
+      if (ev.target.closest('.card[data-kita]') && Date.now() - swipedAt > 400) { openSport(days[+el.dataset.i]); return; }
       const card = ev.target.closest('.card[data-n]');
       if (card) {
         const it = itemsCache[+el.dataset.i][+card.dataset.n];
@@ -787,45 +822,53 @@ function anziehenFuer(dIso) {
   return out.slice(0, 5);
 }
 function kindSvg(liste, h) {
+  // Comic-Stil: großer Kopf, dicke Umrisse, flache Farben
   const has = (k) => liste.includes(k);
-  const SK = '#F6D3B3', SKS = '#B5835A';
-  const TOP = has('winterjacke') ? ['#E8A0A0', '#B3342D'] : has('regenjacke') ? ['#FFE066', '#C9851B'] : has('jacke') ? ['#9FC3EA', '#2F6FB0'] : has('pullover') ? ['#B9DDB9', '#3E7A4E'] : ['#FFD866', '#C9851B'];
+  const INK = '#2A2A33', SK = '#FFD9B8';
+  const TOP = has('winterjacke') ? '#F2737A' : has('regenjacke') ? '#FFD23F' : has('jacke') ? '#5DA9E9' : has('pullover') ? '#6CCB8F' : '#FFB547';
   const kurz = has('tshirt') && !has('regenjacke');
   const latz = has('schneehose') || has('matschhose');
-  const HOSE = has('schneehose') ? ['#E8A0A0', '#B3342D'] : has('matschhose') ? ['#9FC3EA', '#2F6FB0'] : ['#7E9CC9', '#4A6A9C'];
+  const HOSE = has('schneehose') ? '#F2737A' : has('matschhose') ? '#5DA9E9' : '#4F6DB8';
+  const limb = (d, c) => '<path d="' + d + '" stroke="' + INK + '" stroke-width="9.5" fill="none"/><path d="' + d + '" stroke="' + c + '" stroke-width="6.5" fill="none"/>';
   let g = '';
-  // Beine und Hose
+  // Kapuze hinter dem Kopf (Regen- und Winterjacke)
+  if (has('regenjacke') || (has('winterjacke') && !has('muetze'))) g += '<circle cx="30" cy="22" r="17.5" fill="' + TOP + '" stroke="' + INK + '" stroke-width="2"/>';
+  // Beine
   if (kurz && !latz) {
-    g += '<path d="M21 70h8v18h-8zM31 70h8v18h-8z" fill="' + SK + '" stroke="' + SKS + '"/>';
-    g += '<path d="M19 58h22l1 13h-10l-2-4-2 4H18z" fill="' + HOSE[0] + '" stroke="' + HOSE[1] + '"/>';
+    g += limb('M25 64 L24.5 86', SK) + limb('M35 64 L35.5 86', SK);
+    g += '<path d="M18 62h24l1 11h-11l-2-3-2 3H17z" fill="' + HOSE + '" stroke="' + INK + '" stroke-width="2"/>';
   } else {
-    g += '<path d="M19 58h22l1 31h-10l-2-22-2 22H18z" fill="' + HOSE[0] + '" stroke="' + HOSE[1] + '"/>';
+    g += limb('M25 64 L24.5 86', HOSE) + limb('M35 64 L35.5 86', HOSE);
   }
   // Füße
-  if (has('stiefel')) g += '<path d="M19 79h10v13H17v-2a3 3 0 0 1 2-3zM31 79h10v8a3 3 0 0 1 2 3v2H31z" fill="#7CC47C" stroke="#3E7A4E"/>';
-  else g += '<path d="M18 88h11v5H16a2.5 2.5 0 0 1 2-5zM31 88h11a2.5 2.5 0 0 1 2 5H31z" fill="#5B6573" stroke="#2A2A33"/>';
-  // Oberteil mit Armen
+  if (has('stiefel')) g += '<path d="M19 78h11v14H17a2 2 0 0 1 0-3l2-1zM30 78h11v10l2 1a2 2 0 0 1 0 3H30z" fill="#4CC38A" stroke="' + INK + '" stroke-width="2"/><path d="M19 82h11M30 82h11" stroke="' + INK + '" stroke-width="1.4"/>';
+  else g += '<ellipse cx="23" cy="89" rx="6.5" ry="3.8" fill="#FF6B6B" stroke="' + INK + '" stroke-width="2"/><ellipse cx="37" cy="89" rx="6.5" ry="3.8" fill="#FF6B6B" stroke="' + INK + '" stroke-width="2"/>';
+  // Arme
   if (kurz) {
-    g += '<path d="M12 55l3-15M48 55l-3-15" stroke="' + SK + '" stroke-width="5.5"/><path d="M12 55l3-15M48 55l-3-15" stroke="' + SKS + '" stroke-width="0.6" opacity="0"/>';
-    g += '<path d="M19 31h22l6 4-3 7-3-2 1 20H18l1-20-3 2-3-7z" fill="' + TOP[0] + '" stroke="' + TOP[1] + '"/>';
+    g += limb('M19 44 L11 60', SK) + limb('M41 44 L49 60', SK);
+    g += limb('M19 43 L16.5 49', TOP) + limb('M41 43 L43.5 49', TOP);
   } else {
-    g += '<path d="M19 31h22l7 4 4 20-6 1-4-14 1 18H17l1-18-4 14-6-1 4-20z" fill="' + TOP[0] + '" stroke="' + TOP[1] + '"/>';
-    if (has('winterjacke') || has('regenjacke') || has('jacke')) g += '<path d="M30 32v28" stroke="' + TOP[1] + '"/>';
-    if (has('winterjacke')) g += '<path d="M18 44h24M18 51h24" stroke="' + TOP[1] + '"/>';
+    g += limb('M19 44 L11 60', TOP) + limb('M41 44 L49 60', TOP);
   }
-  if (latz) g += '<path d="M22 58v-8h16v8M23 50l-1-18M37 50l1-18" fill="' + HOSE[0] + '" stroke="' + HOSE[1] + '"/>';
+  // Körper
+  g += '<path d="M17 43c0-3.5 3-6 6.5-6h13c3.5 0 6.5 2.5 6.5 6l1 22H16z" fill="' + TOP + '" stroke="' + INK + '" stroke-width="2"/>';
+  if (has('winterjacke')) g += '<path d="M17 49.5h26M16.6 57h26.8" stroke="' + INK + '" stroke-width="1.4" opacity=".55"/>';
+  if (has('jacke') || has('winterjacke') || has('regenjacke')) g += '<path d="M30 38v27" stroke="' + INK + '" stroke-width="1.6"/>';
+  if (has('regenjacke')) g += '<path d="M21 54h5M34 54h5" stroke="' + INK + '" stroke-width="1.6"/>';
+  if (latz) g += '<path d="M21.5 65V52h17v13" fill="' + HOSE + '" stroke="' + INK + '" stroke-width="2"/><path d="M22.5 52 21 38M37.5 52 39 38" stroke="' + INK + '" stroke-width="2"/><circle cx="23.5" cy="54.5" r="1.2" fill="' + INK + '"/><circle cx="36.5" cy="54.5" r="1.2" fill="' + INK + '"/>';
   // Hände
-  const HA = has('handschuhe') ? ['#C7B3E6', '#6A4C9C'] : [SK, SKS];
-  const hy = kurz ? 57 : 58;
-  g += '<circle cx="' + (kurz ? 12 : 11) + '" cy="' + hy + '" r="3.6" fill="' + HA[0] + '" stroke="' + HA[1] + '"/><circle cx="' + (kurz ? 48 : 49) + '" cy="' + hy + '" r="3.6" fill="' + HA[0] + '" stroke="' + HA[1] + '"/>';
+  const HA = has('handschuhe') ? '#A78BFA' : SK;
+  g += '<circle cx="10.5" cy="62" r="4.2" fill="' + HA + '" stroke="' + INK + '" stroke-width="2"/><circle cx="49.5" cy="62" r="4.2" fill="' + HA + '" stroke="' + INK + '" stroke-width="2"/>';
   // Kopf
-  g += '<path d="M27 28h6v4h-6z" fill="' + SK + '"/><circle cx="30" cy="18" r="11" fill="' + SK + '" stroke="' + SKS + '"/>';
-  g += '<path d="M19 17a11 11 0 0 1 22 0c-3-3.5-7-4.5-11-3.2C26 12.5 22 13.5 19 17z" fill="#8B5A33" stroke="#6B4425"/>';
-  if (has('muetze')) g += '<path d="M18.6 15a11.4 10.5 0 0 1 22.8 0z" fill="#C7B3E6" stroke="#6A4C9C"/><path d="M18 13.5h24v4H18z" fill="#8A6BC0" stroke="#6A4C9C"/><circle cx="30" cy="4" r="2.6" fill="#fff" stroke="#6A4C9C"/>';
-  if (has('kappe')) g += '<path d="M21 11a9 7 0 0 1 18 0z" fill="#FFD866" stroke="#C9851B"/><ellipse cx="30" cy="11.5" rx="16" ry="2.6" fill="#FFD866" stroke="#C9851B"/>';
-  g += '<circle cx="26" cy="20" r="1.3" fill="#2A2A33"/><circle cx="34" cy="20" r="1.3" fill="#2A2A33"/><path d="M26.5 24q3.5 3 7 0" stroke="#2A2A33" stroke-width="1.3"/>';
-  g += '<circle cx="23.5" cy="23" r="1.6" fill="#F2A7A0" opacity=".6"/><circle cx="36.5" cy="23" r="1.6" fill="#F2A7A0" opacity=".6"/>';
-  return '<svg width="' + Math.round(h * 0.6) + '" height="' + h + '" viewBox="0 0 60 100" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-label="Kind angezogen">' + g + '</svg>';
+  g += '<circle cx="30" cy="22" r="14.5" fill="' + SK + '" stroke="' + INK + '" stroke-width="2"/>';
+  if (!has('muetze')) g += '<path d="M15.6 21C15.4 12 22 7 30 7s14.6 5 14.4 14c-2.4-3-5.4-4.6-8.4-4.6l-2.2 3-3.3-3.2-4 3.2-2.3-3.2c-4 0-7.6 1.7-10.6 4.8z" fill="#7A4B2A" stroke="' + INK + '" stroke-width="2" stroke-linejoin="round"/>';
+  if (has('muetze')) g += '<path d="M15.2 19.5a14.8 13.5 0 0 1 29.6 0z" fill="#A78BFA" stroke="' + INK + '" stroke-width="2"/><rect x="14" y="17" width="32" height="6" rx="3" fill="#7C5CE0" stroke="' + INK + '" stroke-width="2"/><circle cx="30" cy="5.5" r="3.6" fill="#fff" stroke="' + INK + '" stroke-width="2"/>';
+  if (has('kappe')) g += '<path d="M19 13.5a11 9 0 0 1 22 0z" fill="#FFD23F" stroke="' + INK + '" stroke-width="2"/><ellipse cx="30" cy="14" rx="19" ry="3.6" fill="#FFD23F" stroke="' + INK + '" stroke-width="2"/><path d="M19.5 12.5h21" stroke="#FF6B6B" stroke-width="2"/>';
+  // Gesicht
+  g += '<ellipse cx="24.5" cy="25" rx="2.1" ry="2.9" fill="' + INK + '"/><ellipse cx="35.5" cy="25" rx="2.1" ry="2.9" fill="' + INK + '"/><circle cx="25.2" cy="24" r=".9" fill="#fff"/><circle cx="36.2" cy="24" r=".9" fill="#fff"/>';
+  g += '<ellipse cx="20.5" cy="29.5" rx="2.6" ry="1.6" fill="#FF8A8A" opacity=".55"/><ellipse cx="39.5" cy="29.5" rx="2.6" ry="1.6" fill="#FF8A8A" opacity=".55"/>';
+  g += '<path d="M26 30q4 3.6 8 0" stroke="' + INK + '" stroke-width="1.8" fill="none"/>';
+  return '<svg width="' + Math.round(h * 0.6) + '" height="' + h + '" viewBox="0 0 60 100" stroke-linecap="round" stroke-linejoin="round" aria-label="Kind angezogen">' + g + '</svg>';
 }
 function anziehenHtml(dIso, titel) {
   const liste = anziehenFuer(dIso);
@@ -867,6 +910,71 @@ function wetterPanel() {
   return html + '</div>';
 }
 
+// ---------- Aufgaben (wiederkehrend, zum Abhaken) ----------
+const AUFG_ICON = {
+  anziehen:  '<path d="M8.5 3 4.5 5 2.5 18l3 .6L7.5 10v11h9V10l2 8.6 3-.6-2-13-4-2c-.6 1.6-2 2.6-3.5 2.6S9.1 4.6 8.5 3z" fill="#B9DDB9" stroke="#3E7A4E"/>',
+  zaehne:    '<path d="M3 17.5 14.5 6" stroke="#2F6FB0" stroke-width="2.6"/><path d="M13 4.5h7a1.5 1.5 0 0 1 1.5 1.5v2.5H13z" fill="#fff" stroke="#2F6FB0"/><path d="M14.5 4.5v-2M17 4.5v-2M19.5 4.5v-2" stroke="#8DB8E6"/>',
+  haare:     '<path d="M3 9.5h18v3.5H3z" fill="#F2B4C6" stroke="#B3466A"/><path d="M5 13v5M8 13v5M11 13v5M14 13v5M17 13v5M20 13v5" stroke="#B3466A"/>',
+  schlafanzug: '<path d="M8.5 3 4.5 5 2.5 18l3 .6L7.5 10v11h9V10l2 8.6 3-.6-2-13-4-2c-.6 1.6-2 2.6-3.5 2.6S9.1 4.6 8.5 3z" fill="#C7D7F5" stroke="#4A5FA8"/><path d="M13 12.5a2.5 2.5 0 1 0 2.5 3 2 2 0 0 1-2.5-3z" fill="#FFD866" stroke="#C9A227"/><circle cx="10" cy="17" r=".7" fill="#4A5FA8"/>',
+  rauslegen: '<path d="M3 20h18" stroke="#8B5A33"/><path d="M5 20v-6h14v6" stroke="#8B5A33"/><path d="M6 14l1.5-6h9l1.5 6z" fill="#FFD866" stroke="#C9851B"/><path d="M9.5 8a2.5 2 0 0 0 5 0" stroke="#C9851B"/>',
+  rucksack:  '<path d="M6 9a6 6 0 0 1 12 0v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z" fill="#FFE1C2" stroke="#D2691E"/><path d="M9 5.5V4a3 3 0 0 1 6 0v1.5M8.5 14h7v4h-7z" stroke="#D2691E"/>'
+};
+function aufgabenFuer() {
+  const now = new Date(), h = now.getHours(), t0 = today0();
+  if (h < 12) return { block: 'm', titel: 'Morgens', d: t0, liste: [['anziehen', 'Anziehen'], ['zaehne', 'Zähne putzen'], ['haare', 'Haare kämmen']] };
+  const liste = [['zaehne', 'Zähne putzen'], ['haare', 'Haare kämmen'], ['schlafanzug', 'Schlafanzug anziehen'], ['rauslegen', 'Sachen für morgen rauslegen']];
+  if (sportAm(addDays(t0, 1))) liste.push(['rucksack', 'Rucksack für Sport packen']);
+  return { block: 'a', titel: 'Abends', d: t0, liste };
+}
+function aufgabenPanel() {
+  const A = aufgabenFuer(), base = iso(A.d) + '|' + A.block + '|';
+  const fertig = A.liste.filter(([k]) => S.done[base + k]).length;
+  let h = '<div class="panel" id="todoPanel"><h2><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3E8E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>Aufgaben</h2><div class="muted" style="font-size:17px;margin-top:-6px">' + A.titel + '</div><div class="tlist">';
+  A.liste.forEach(([k, w]) => {
+    const ok = !!S.done[base + k];
+    h += '<button class="task' + (ok ? ' ok' : '') + '" data-t="' + base + k + '"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + AUFG_ICON[k] + '</svg><span class="w">' + w + '</span><span class="box">' + (ok ? '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : '') + '</span></button>';
+  });
+  h += '</div>';
+  if (fertig === A.liste.length) h += '<div class="super">' + STAR + ' Super gemacht! ' + STAR + '</div>';
+  return h + '</div>';
+}
+function aufgabeUmschalten(key) {
+  if (S.done[key]) delete S.done[key]; else S.done[key] = true;
+  // Alte Haken (älter als 3 Tage) aufräumen
+  const grenze = iso(addDays(today0(), -3));
+  Object.keys(S.done).forEach((k) => { if (k.slice(0, 10) < grenze) delete S.done[k]; });
+  save(); render();
+}
+
+// ---------- Tagesplan als Zeitleiste ----------
+function zeitleisteHtml(d, H) {
+  const pm = H / (END - START), y = (m) => (m - START) * pm;
+  const now = nowMinutes(), heute = iso(d) === iso(today0());
+  let h = '<div class="tl" style="height:' + H + 'px"><div class="tl-t">';
+  for (let hh = 6; hh <= 20; hh += (H < 420 ? 2 : 1)) h += '<div style="top:' + y(hh * 60) + 'px">' + hh + '</div>';
+  h += '</div><div class="tl-c" style="background-image:repeating-linear-gradient(to bottom, rgba(42,42,51,.07) 0 1px, transparent 1px ' + (60 * pm) + 'px)">';
+  const kitaDay = wIdx(d) < 5 && !specialOf(d);
+  const bands = kitaDay
+    ? [[360, kitaZeit().von, '#FFF1E3'], [kitaZeit().von, kitaZeit().bis, '#EAF3FB'], [kitaZeit().bis, 1080, '#EDF6EC'], [1080, END, '#EFECFA']]
+    : [[360, 480, '#FFF1E3'], [480, 720, '#FFF8E1'], [720, 840, '#FBF4E4'], [840, 1080, '#EDF6EC'], [1080, END, '#EFECFA']];
+  bands.forEach(([a, b, c]) => { h += '<div class="band" style="top:' + y(a) + 'px;height:' + (y(b) - y(a)) + 'px;background:' + c + '"></div>'; });
+  itemsFor(d).forEach((it) => {
+    const top = y(it.s) + 2, hg = Math.max(30, (it.e - it.s) * pm - 4), ind = (it.depth || 0) * 14;
+    const past = heute && it.e <= now;
+    const isz = hg >= 52 ? 36 : 26;
+    const L = itemLook(it, isz);
+    const pos = 'top:' + top + 'px;height:' + hg + 'px;left:' + (4 + ind) + 'px;right:4px;z-index:' + (it.kita ? 1 : (it.z || 2)) + ';';
+    if (it.kita) {
+      h += '<div class="card kitablock" style="' + pos + 'flex-direction:column;justify-content:center;gap:6px"><div style="display:flex;align-items:center;gap:8px">' + L.icon + '<span class="lbl">Kita ' + fmt(it.s) + '–' + fmt(it.e) + '</span></div>' +
+        (it.sport ? '<div class="sportbadge" style="flex-direction:row;margin:0">' + sportSvg(34) + '<span>Sport</span></div>' : '') + '</div>';
+      return;
+    }
+    h += '<div class="card' + (past ? ' past' : '') + '" style="' + pos + 'border-color:' + L.color + (it.depth ? ';box-shadow:0 -3px 10px rgba(42,42,51,.18)' : '') + '"><span class="tl-z">' + fmt(it.s) + '</span>' + L.icon + '<span class="lbl">' + L.label + '</span>' + (it.own ? STAR : '') + '</div>';
+  });
+  if (heute && now >= START && now <= END) h += '<div class="nowline" style="top:' + (y(now) - 2) + 'px"></div><div class="nowdot" style="top:' + y(now) + 'px"></div>';
+  return h + '</div></div>';
+}
+
 function renderHome() {
   const t0 = today0(), now = nowMinutes();
   const abends = now >= 17 * 60;
@@ -874,21 +982,13 @@ function renderHome() {
   const sp = specialOf(d), we = d.getDay() === 0 || d.getDay() === 6;
   const dayIcon = sp === 'kita' ? HOUSE_X : sp === 'urlaub' ? CASE : we ? YAY : KITA_DAY;
   $('title').innerHTML = scene(sceneNow(), 52) + 'Heute ist ' + DAYS_LONG[t0.getDay()] + '<span class="muted" style="font-weight:400;font-size:.7em;margin-left:6px">' + fmt(now) + ' Uhr</span>';
-  const items = itemsFor(d).slice().sort((a, b) => a.s - b.s);
-  let list = items.map((it) => {
-    const L = itemLook(it, 40);
-    const past = !abends && it.e <= now;
-    const zeit = it.kita ? fmt(it.s) : fmt(it.s);
-    return '<div class="hrow' + (it.kita ? ' kitarow' : '') + (past ? ' past' : '') + '" style="' + (it.kita ? '' : 'border-color:' + L.color) + '"><span class="t">' + zeit + '</span>' +
-      '<span style="display:flex;gap:6px;align-items:center">' + L.icon + '</span><span class="l">' + L.label + (it.kita ? ' bis ' + fmt(it.e) : '') + '</span>' + (it.own ? STAR : '') + '</div>';
-  }).join('');
-  if (!items.length) list = '<div class="todo-empty" style="font-size:22px">' + (abends ? 'Morgen' : 'Heute') + ' ist nichts eingetragen.</div>';
   const plan = '<div class="panel plan' + (abends ? '' : ' today') + '" id="planPanel"><h2>' + (abends ? 'Morgen' : 'Heute') + ' <span style="font-weight:400;color:var(--muted);font-size:.7em">' + DAYS_LONG[d.getDay()] + ', ' + d.getDate() + '. ' + MONTHS[d.getMonth()] + '</span><span style="margin-left:auto">' + dayIcon + '</span></h2>' +
-    '<div class="hlist">' + list + '</div><div class="hint">Antippen für den ganzen Kalender</div></div>';
-  const todo = '<div class="panel"><h2><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3E8E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>Aufgaben</h2>' +
-    '<div class="todo-empty"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#B5AB9A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>Hier kommen bald<br>Noras Aufgaben hin.</div></div>';
-  $('home').innerHTML = plan + wetterPanel() + todo;
+    '<div class="tlbox" id="tlbox"></div><div class="hint">Antippen für den ganzen Kalender</div></div>';
+  $('home').innerHTML = plan + wetterPanel() + aufgabenPanel();
+  const box = $('tlbox');
+  box.innerHTML = zeitleisteHtml(d, Math.max(240, box.clientHeight - 4));
   $('planPanel').onclick = () => { view = 'cal'; offset = 0; lastActive = Date.now(); render(); };
+  $('todoPanel').querySelectorAll('[data-t]').forEach((b) => b.onclick = (ev) => { ev.stopPropagation(); aufgabeUmschalten(b.dataset.t); });
   ladeWetter();
 }
 
@@ -1070,6 +1170,20 @@ function openEdit(day, it) {
   }
   function close() { layer.innerHTML = ''; }
   draw();
+}
+
+function openSport(day) {
+  const an = sportAm(day), layer = $('layer');
+  const key = iso(day) + '|sport';
+  const btn = (v, inner, label) => '<button class="tile' + (an === v ? ' on' : '') + '" data-sp="' + v + '">' + inner + '<span>' + label + '</span></button>';
+  layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet" style="width:min(560px,100%)">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between"><div><div class="sub">' + DAYS_LONG[day.getDay()] + ', ' + day.getDate() + '. ' + MONTHS[day.getMonth()] + '</div><h2>Ist Sport in der Kita?</h2></div>' +
+    '<button class="round" id="closeBtn" aria-label="Schließen"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+    '<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))">' + btn(true, sportSvg(72), 'Ja, Sport') + btn(false, '<span style="font-size:56px;color:#B5AB9A;line-height:72px">–</span>', 'Kein Sport') + '</div>' +
+    '<div class="muted" style="font-size:16px">Gilt nur für diesen Tag. Die Standard-Woche bleibt gleich.</div></div></div>';
+  layer.querySelectorAll('[data-sp]').forEach((b) => b.onclick = () => { S.over = S.over || {}; S.over[key] = { on: b.dataset.sp === 'true' }; save(); layer.innerHTML = ''; render(); });
+  $('closeBtn').onclick = () => { layer.innerHTML = ''; };
+  $('ov').onclick = (ev) => { if (ev.target.id === 'ov') layer.innerHTML = ''; };
 }
 
 function openGoogleInfo(day, it) {
@@ -1255,6 +1369,12 @@ function tabWoche(el) {
       h += '<button class="cell" data-k="' + key + '" data-i="' + i + '"' + (i >= 5 ? ' style="background:#F7FBF7"' : '') + '>' + inner + '</button>';
     });
   });
+  S.week.sport = S.week.sport || [false, false, false, false, false, false, false];
+  h += '<div class="rl">Kita-Sport</div>';
+  S.week.sport.forEach((v, i) => {
+    const inner = i >= 5 ? '<span style="font-size:22px;color:#B5AB9A">–</span>' : (v ? sportSvg(40) : '<span style="font-size:22px;color:#C9BFAE">+</span>');
+    h += '<button class="cell" data-sport="' + i + '"' + (i >= 5 ? ' style="background:#F7FBF7"' : '') + '>' + inner + '</button>';
+  });
   h += '</div>';
   const kz = kitaZeit();
   h += '<h2 style="font-size:24px;margin-top:10px">Kita-Zeit (Montag bis Freitag)</h2><div class="timerow" style="background:#fff;border:2px solid #E7E1D8">' +
@@ -1270,7 +1390,11 @@ function tabWoche(el) {
     if (a === 'b+' && z.bis < 1080) z.bis += 30;
     S.week.kita = z; save(); tabWoche(el);
   });
-  el.querySelectorAll('.cell').forEach((c) => c.onclick = () => {
+  el.querySelectorAll('[data-sport]').forEach((c) => c.onclick = () => {
+    const i = +c.dataset.sport; if (i >= 5) return;
+    S.week.sport[i] = !S.week.sport[i]; save(); tabWoche(el);
+  });
+  el.querySelectorAll('.cell[data-k]').forEach((c) => c.onclick = () => {
     const key = c.dataset.k, i = +c.dataset.i;
     if (i >= 5 && (key === 'bringt' || key === 'abholen')) return;
     const label = rows.find((r) => r[0] === key)[1];
