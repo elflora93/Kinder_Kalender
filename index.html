@@ -28,7 +28,7 @@
   .lock { width: 44px; height: 44px; border: none; background: transparent; margin-left: 8px; cursor: pointer; opacity: .6; }
 
   /* Raster */
-  .grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 70px repeat(3, minmax(0, 1fr)); grid-template-rows: 80px 1fr; column-gap: 12px; row-gap: 8px; touch-action: pan-y; }
+  .grid { -webkit-user-select: none; user-select: none; flex: 1; min-height: 0; display: grid; grid-template-columns: 70px repeat(3, minmax(0, 1fr)); grid-template-rows: 80px 1fr; column-gap: 12px; row-gap: 8px; touch-action: pan-y; }
   .dayhead { display: flex; align-items: center; justify-content: space-between; padding: 0 14px; border-radius: 16px; background: #fff; border: 2px solid var(--line); }
   .dayhead .name { font-size: clamp(20px, 2.2vw, 26px); font-weight: 700; display: flex; align-items: center; gap: 8px; }
   .dayhead .date { font-size: 15px; color: var(--muted); }
@@ -641,6 +641,12 @@ function render() {
         if (it.google) openGoogleInfo(days[+el.dataset.i], it); else openEdit(days[+el.dataset.i], it);
         return;
       }
+      // Neuer Eintrag nur mit Doppel-Tipp (ein Tipp oder Wischen macht nichts)
+      if (Date.now() - swipedAt < 400) return;
+      const now = Date.now(), last = lastTap;
+      lastTap = { i: el.dataset.i, t: now, x: ev.clientX, y: ev.clientY };
+      if (!last || last.i !== el.dataset.i || now - last.t > 450 || Math.abs(last.y - ev.clientY) > 40 || Math.abs(last.x - ev.clientX) > 40) return;
+      lastTap = null;
       const r = el.getBoundingClientRect();
       let m = START + (ev.clientY - r.top) / ppm;
       m = Math.floor(m / 30) * 30;
@@ -659,13 +665,21 @@ function sceneNow() {
 $('prevBtn').onclick = () => { offset--; render(); };
 $('nextBtn').onclick = () => { offset++; render(); };
 $('todayBtn').onclick = () => { offset = 0; render(); };
-let sx = null, sy = null;
-$('grid').addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
-$('grid').addEventListener('touchend', (e) => {
-  if (sx === null) return;
-  const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+// Wischen mit Finger, Stift oder Maus: nach links = spätere Tage, nach rechts = frühere
+let sx = null, sy = null, swipedAt = 0, lastTap = null;
+$('grid').addEventListener('pointerdown', (e) => { if (e.isPrimary) { sx = e.clientX; sy = e.clientY; } });
+$('grid').addEventListener('pointercancel', () => { sx = null; });
+window.addEventListener('pointerup', (e) => {
+  if (sx === null || !e.isPrimary) return;
+  const dx = e.clientX - sx, dy = e.clientY - sy;
   sx = null;
-  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { offset += dx < 0 ? 1 : -1; render(); e.preventDefault(); }
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+    const n = Math.max(1, Math.min(7, S.settings.days || 3));
+    const steps = Math.max(1, Math.min(n, Math.round(Math.abs(dx) / Math.max(120, $('grid').clientWidth / n))));
+    offset += dx < 0 ? steps : -steps;
+    swipedAt = Date.now(); lastTap = null;
+    render();
+  }
 });
 
 // ---------- Nora trägt ein ----------
