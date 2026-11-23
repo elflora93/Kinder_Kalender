@@ -826,7 +826,7 @@ function kindSvg(liste, h) {
   const has = (k) => liste.includes(k);
   const dk = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * (f || 0.72))); return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join(''); };
   const F = (c) => 'fill="' + c + '" stroke="' + dk(c) + '" stroke-width="1.2"';
-  const SK = '#F6D2B4', HAIR = '#8A5530', BROWN = '#8A5A3C';
+  const SK = '#F6D2B4', HAIR = '#E8C26A', BROWN = '#8A5A3C';
   const mantel = has('winterjacke') || has('regenjacke');
   const TOP = has('winterjacke') ? '#E8743B' : has('regenjacke') ? '#F2C14E' : has('jacke') ? '#5B8FC9' : has('pullover') ? '#7DB37A' : '#F08A6C';
   const kurz = has('tshirt') && !mantel;
