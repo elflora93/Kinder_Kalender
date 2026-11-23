@@ -118,7 +118,7 @@
   .hidden { display: none !important; }
 
   /* Startseite (Übersicht) */
-  #home { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.4fr 1.15fr .85fr; gap: 16px; }
+  #home { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.3fr 1.3fr .8fr; gap: 16px; }
   #app:not(.homeview) #home, #app.homeview #grid, #app.homeview #prevBtn, #app.homeview #nextBtn, #app.homeview #todayBtn, #app.homeview #homeBtn { display: none !important; }
   .panel { background: #fff; border: 2px solid var(--line); border-radius: 22px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; }
   .panel h2 { margin: 0; font-size: clamp(22px, 2.4vw, 30px); display: flex; align-items: center; gap: 10px; }
@@ -132,16 +132,21 @@
   .hrow.kitarow { background: #EAF3FB; border-color: #9DBBDD; }
   .hint { margin-top: auto; text-align: center; color: var(--muted); font-size: 16px; }
   .wnow { display: flex; align-items: center; gap: 14px; }
-  .wnow .temp { font-size: clamp(44px, 5vw, 64px); font-weight: 700; line-height: 1; }
+  .wnow .temp { font-size: clamp(40px, 4.4vw, 56px); font-weight: 700; line-height: 1; }
   .wday { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 14px; background: var(--bg); }
   .wday .n { font-size: 19px; font-weight: 700; width: 70px; flex-shrink: 0; }
   .wday .mm { font-size: 20px; font-weight: 700; white-space: nowrap; }
   .wday svg, .wnow svg, .hours svg { flex-shrink: 0; }
   .rain { display: inline-flex; align-items: center; gap: 4px; font-size: 17px; font-weight: 700; color: #2F6FB0; margin-left: auto; white-space: nowrap; }
-  .hours { display: flex; gap: 3px; align-items: flex-end; height: 92px; }
+  .hours { display: flex; gap: 3px; align-items: flex-end; height: 84px; flex-shrink: 0; }
   .hours .c { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; font-size: 12px; color: var(--muted); height: 100%; }
   .hours .bar { width: 70%; background: #8DB8E6; border-radius: 3px 3px 0 0; }
   .hours .tt { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .anz { background: #F6F2EB; border-radius: 16px; padding: 8px 10px; }
+  .anz-t { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .anz-r { display: flex; flex-wrap: wrap; gap: 4px 2px; justify-content: space-around; }
+  .anz-k { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; text-align: center; width: 78px; line-height: 1.1; -webkit-hyphens: auto; hyphens: auto; }
+  .anz-k svg { flex-shrink: 0; }
   .todo-empty { flex: 1; border: 3px dashed var(--line); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 20px; font-weight: 700; text-align: center; }
   @media (max-width: 900px) { #home { grid-template-columns: 1fr 1fr; overflow: auto; } #home .plan { grid-column: 1 / -1; min-height: 360px; } }
   @media (max-width: 600px) { #home { grid-template-columns: 1fr; } }
@@ -742,14 +747,61 @@ function wetterSvg(code, size, nacht) {
 }
 const TROPFEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#8DB8E6" stroke="#2F6FB0" stroke-width="1.8"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>';
 
+// ---------- Was ziehe ich an? ----------
+const KLEID = {
+  tshirt:      { w: 'T-Shirt',     svg: '<path d="M8.5 3 3 6l2 4 2.5-1.2V21h9V8.8L19 10l2-4-5.5-3c-.6 1.6-2 2.6-3.5 2.6S9.1 4.6 8.5 3z" fill="#FFD866" stroke="#C9851B"/>' },
+  pullover:    { w: 'Pulli',       svg: '<path d="M8.5 3 4.5 5 2.5 18l3 .6L7.5 10v11h9V10l2 8.6 3-.6-2-13-4-2c-.6 1.6-2 2.6-3.5 2.6S9.1 4.6 8.5 3z" fill="#B9DDB9" stroke="#3E7A4E"/><path d="M7.5 19h9M9.5 5.2c1.5 1 3.5 1 5 0" stroke="#3E7A4E"/>' },
+  jacke:       { w: 'Jacke',       svg: '<path d="M8.5 3 4.5 5 2.5 18l3 .6L7.5 10v11h9V10l2 8.6 3-.6-2-13-4-2-3.5 3z" fill="#9FC3EA" stroke="#2F6FB0"/><path d="M12 6v15M9.5 13h1M13.5 13h1" stroke="#2F6FB0"/>' },
+  winterjacke: { w: 'Winter&shy;jacke', svg: '<path d="M8 4.5 4 6.5 2.5 18.5l3.2.6L7.5 11v10h9V11l1.8 8.1 3.2-.6L20 6.5l-4-2" fill="#E8A0A0" stroke="#B3342D"/><path d="M8 4.5a4 3.5 0 0 1 8 0L12 7z" fill="#E8A0A0" stroke="#B3342D"/><path d="M12 7v14M7.5 14h9M7.5 17.5h9" stroke="#B3342D"/>' },
+  regenjacke:  { w: 'Regen&shy;jacke',  svg: '<path d="M8 4.5 4 6.5 2.5 18.5l3.2.6L7.5 11v10h9V11l1.8 8.1 3.2-.6L20 6.5l-4-2" fill="#FFE066" stroke="#C9851B"/><path d="M8 4.5a4 3.5 0 0 1 8 0L12 7z" fill="#FFE066" stroke="#C9851B"/><path d="M12 7v14" stroke="#C9851B"/>' },
+  muetze:      { w: 'Mütze',       svg: '<path d="M5 17a7 7 0 0 1 14 0z" fill="#C7B3E6" stroke="#6A4C9C"/><path d="M4 17h16v3.5H4z" fill="#8A6BC0" stroke="#6A4C9C"/><circle cx="12" cy="7.5" r="2" fill="#fff" stroke="#6A4C9C"/>' },
+  handschuhe:  { w: 'Hand&shy;schuhe',  svg: '<path d="M8.5 21v-3.5L5.3 12.4a1.7 1.7 0 0 1 2.8-1.9l1.4 1.8V6.5a3 3 0 0 1 6 0v8.3a4 4 0 0 1-2 3.4V21z" fill="#C7B3E6" stroke="#6A4C9C"/><path d="M8.5 18.5h5" stroke="#6A4C9C"/>' },
+  kappe:       { w: 'Sonnenhut',   svg: '<path d="M6 14a6 5.5 0 0 1 12 0z" fill="#FFD866" stroke="#C9851B"/><path d="M2.5 15.5c3 1.5 16 1.5 19 0" stroke="#C9851B"/>' },
+  matschhose:  { w: 'Matsch&shy;hose',  svg: '<path d="M7 5h10l1 16h-4.5L12 12l-1.5 9H6z" fill="#9FC3EA" stroke="#2F6FB0"/><path d="M8 5 7.5 2M16 5l.5-3M7 8h10" stroke="#2F6FB0"/>' },
+  schneehose:  { w: 'Schnee&shy;hose',  svg: '<path d="M7 5h10l1 16h-4.5L12 12l-1.5 9H6z" fill="#E8A0A0" stroke="#B3342D"/><path d="M8 5 7.5 2M16 5l.5-3M7 8h10" stroke="#B3342D"/>' },
+  stiefel:     { w: 'Gummi&shy;stiefel', svg: '<path d="M6 3h6.5v11l6 2.4a2 2 0 0 1 1.5 2V21H6z" fill="#7CC47C" stroke="#3E7A4E"/><path d="M6 6h6.5M6 21h14" stroke="#3E7A4E"/>' }
+};
+// Tageszeit 7 bis 17 Uhr des Tages zählt (draußen in Kita und Garten)
+function anziehenFuer(dIso) {
+  if (!wetter || !wetter.hourly) return null;
+  const h = wetter.hourly, ks = [];
+  h.time.forEach((t, k) => { if (t.slice(0, 10) === dIso && +t.slice(11, 13) >= 7 && +t.slice(11, 13) <= 17) ks.push(k); });
+  if (!ks.length) return null;
+  const tmin = Math.min(...ks.map((k) => h.temperature_2m[k])), tmax = Math.max(...ks.map((k) => h.temperature_2m[k]));
+  const pmax = Math.max(...ks.map((k) => h.precipitation_probability[k] || 0));
+  const mm = ks.reduce((a, k) => a + (h.precipitation[k] || 0), 0);
+  const schnee = ks.some((k) => { const c = h.weather_code[k]; return (c >= 71 && c <= 77) || c === 85 || c === 86; });
+  const sonnig = ks.filter((k) => h.weather_code[k] <= 1).length >= ks.length / 2;
+  const regen = !schnee && (pmax >= 50 || mm >= 1);
+  const out = [];
+  if (tmin < 3) out.push('winterjacke', 'muetze', 'handschuhe');
+  else if (tmin < 10) out.push(regen ? 'regenjacke' : 'winterjacke', 'muetze');
+  else if (tmin < 16) out.push(regen ? 'regenjacke' : 'jacke');
+  else if (tmin < 21) out.push('pullover');
+  else out.push('tshirt');
+  if (tmin >= 16 && regen) out.push('regenjacke');
+  if (tmax >= 24 && sonnig) out.push('kappe');
+  if (schnee) out.push('schneehose', 'stiefel');
+  else if (regen) out.push('matschhose', 'stiefel');
+  return out.slice(0, 5);
+}
+function anziehenHtml(dIso, titel) {
+  const liste = anziehenFuer(dIso);
+  if (!liste) return '';
+  return '<div class="anz"><div class="anz-t">' + titel + '</div><div class="anz-r">' + liste.map((k) =>
+    '<div class="anz-k"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + KLEID[k].svg + '</svg><span>' + KLEID[k].w + '</span></div>').join('') + '</div></div>';
+}
+
 function wetterPanel() {
   const o = S.settings.ort || WETTER_DEFAULT;
   if (!wetter || !wetter.current) return '<div class="panel"><h2>Wetter</h2><div class="muted" style="font-size:18px">Wetter wird geladen …</div></div>';
   const c = wetter.current, d = wetter.daily, h = wetter.hourly;
   const nacht = c.is_day === 0;
   let html = '<div class="panel"><h2>Wetter <span class="muted" style="font-size:16px;font-weight:400;margin-left:auto">' + esc(o.name) + '</span></h2>' +
-    '<div class="wnow">' + wetterSvg(c.weather_code, 84, nacht) + '<div><div class="temp">' + Math.round(c.temperature_2m) + '°</div>' +
+    '<div class="wnow">' + wetterSvg(c.weather_code, 68, nacht) + '<div><div class="temp">' + Math.round(c.temperature_2m) + '°</div>' +
     '<div class="muted" style="font-size:17px">' + (c.precipitation > 0 ? 'Es regnet gerade' : 'Gerade trocken') + '</div></div></div>';
+  const abends = new Date().getHours() >= 17;
+  html += abends ? anziehenHtml(iso(addDays(today0(), 1)), 'Morgen anziehen') : anziehenHtml(iso(today0()), 'Heute anziehen');
   // Nächste Stunden: Temperatur und Regen
   const jetzt = new Date(); const key = iso(jetzt) + 'T' + String(jetzt.getHours()).padStart(2, '0') + ':00';
   let i0 = h.time.indexOf(key); if (i0 < 0) i0 = 0;
