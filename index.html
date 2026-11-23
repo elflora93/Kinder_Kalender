@@ -170,8 +170,14 @@
   .task svg { flex-shrink: 0; }
   .super { margin-top: auto; text-align: center; font-size: 22px; font-weight: 700; color: #3E7A4E; display: flex; align-items: center; justify-content: center; gap: 6px; }
   .todo-empty { flex: 1; border: 3px dashed var(--line); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 20px; font-weight: 700; text-align: center; }
-  @media (max-width: 900px) { #home { grid-template-columns: 1fr 1fr; overflow: auto; } #home .plan { grid-column: 1 / -1; min-height: 360px; } }
-  @media (max-width: 600px) { #home { grid-template-columns: 1fr; } }
+  /* Handy und schmale Bildschirme: alles untereinander, Seite scrollt */
+  @media (max-width: 900px), (max-height: 500px) {
+    #home { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-rows: max-content; align-content: start; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+    #home .panel { overflow: visible; min-width: 0; }
+    #home .plan { grid-column: 1 / -1; height: min(560px, 75vh); min-height: 380px; overflow: hidden; }
+    #home .hlist, #home .tlist { overflow: visible; }
+  }
+  @media (max-width: 600px) { #home { grid-template-columns: minmax(0, 1fr); gap: 12px; } .anz-kind svg { height: 170px; } .task { min-height: 72px; } .task svg:first-child { width: 60px; height: 60px; } .wday { flex-wrap: wrap; } .wday .rain { font-size: 15px; } }
   #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 14px; font-size: 17px; z-index: 100; }
   .field { display: flex; flex-direction: column; gap: 6px; font-size: 17px; font-weight: 700; text-align: left; }
   .field input { font-family: inherit; font-size: 20px; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; -webkit-user-select: text; user-select: text; }
