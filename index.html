@@ -277,6 +277,7 @@ const SYM = {
   Arzt:      { color: '#2F6FB0', path: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M12 10.5v6M9 13.5h6"/>' },
   'Bücherei': { color: '#B0487A', path: '<path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/>' },
   Geburtstag: { color: '#D6453D', path: '<rect x="4" y="12" width="16" height="8" rx="2"/><path d="M4 16c1.5 1 2.5 1 4 0s2.5-1 4 0 2.5 1 4 0 2.5-1 4 0"/><path d="M8 12V9M12 12V9M16 12V9"/><path d="M8 4c1 1.2 1 2.4 0 3-1-.6-1-1.8 0-3zM12 4c1 1.2 1 2.4 0 3-1-.6-1-1.8 0-3zM16 4c1 1.2 1 2.4 0 3-1-.6-1-1.8 0-3z"/>' },
+  Reiten:    { color: '#8B5A2B', words: ['pferd', 'reitstunde', 'ponyreiten', 'pony'], path: '<path d="M7 21v-4.5C5.2 15 4.5 13 4.8 10.5 5.4 6 8.6 3.4 12.6 3.3L14 1.8l.9 2c2 .6 3.6 2.1 4.6 4.1l2.3 3.1a1.2 1.2 0 0 1-.4 1.7l-1.2.7a1.3 1.3 0 0 1-1.5-.2l-1.8-1.6-2.4 2.2V21"/><circle cx="15.3" cy="7.3" r=".9" fill="#8B5A2B"/><path d="M11.4 5.4c-1.6 1.1-2.6 3.1-2.6 5.6M9.6 4.6c-2 1.3-3.2 3.6-3.4 6.1"/>' },
   Sonstiges: { color: '#5B6573', path: '<circle cx="12" cy="12" r="9"/><circle cx="7.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="16.5" cy="12" r="1.3"/>' }
 };
 const KITA_PATH = '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>';
@@ -490,7 +491,7 @@ async function fetchGoogle() {
 }
 const SYM_ACT = () => Object.keys(SYM).filter((k) => !SYM[k].person).concat(Object.keys(S.acts || {}));
 function keywordsFor(key) {
-  const base = S.persons[key] ? [S.persons[key].name] : (DAYTYPES[key] ? [DAYTYPES[key].label] : [symLabel(key)]);
+  const base = S.persons[key] ? [S.persons[key].name] : (DAYTYPES[key] ? [DAYTYPES[key].label] : [symLabel(key)].concat((SYM[key] && SYM[key].words) || []));
   return base.concat((S.stich && S.stich[key]) || []).map((w) => String(w).toLowerCase().trim()).filter(Boolean);
 }
 function matchTitle(title) {
