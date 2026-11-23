@@ -822,76 +822,72 @@ function anziehenFuer(dIso) {
   return out.slice(0, 5);
 }
 function kindSvg(liste, h) {
-  // Bilderbuch-Stil: weiche Formen, Umrisse in dunklerer Farbe statt Schwarz, leichte Papier-Körnung
+  // Moderner Flat-Stil: keine Umrisse, weiche Schatten-Flächen, runde Formen
   const has = (k) => liste.includes(k);
-  const dk = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * (f || 0.72))); return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join(''); };
-  const F = (c) => 'fill="' + c + '" stroke="' + dk(c) + '" stroke-width="1.2"';
-  const SK = '#F6D2B4', HAIR = '#E8C26A', BROWN = '#8A5A3C';
+  const dk = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * (f || 0.82))); return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join(''); };
+  const SK = '#FBD5BC', HAIR = '#F0C75E', BROWN = '#7B5136';
   const mantel = has('winterjacke') || has('regenjacke');
-  const TOP = has('winterjacke') ? '#E8743B' : has('regenjacke') ? '#F2C14E' : has('jacke') ? '#5B8FC9' : has('pullover') ? '#7DB37A' : '#F08A6C';
+  const TOP = has('winterjacke') ? '#F2784B' : has('regenjacke') ? '#FFCB3D' : has('jacke') ? '#4F8EF7' : has('pullover') ? '#5CC58A' : '#FF8C7A';
   const kurz = has('tshirt') && !mantel;
   const latz = has('schneehose') || has('matschhose');
-  const HOSE = has('schneehose') ? '#3F7F8C' : has('matschhose') ? '#4D86C6' : kurz ? '#6F8FC4' : '#4E9A8A';
-  const limb = (d, c, w) => '<path d="' + d + '" stroke="' + dk(c) + '" stroke-width="' + ((w || 6.4) + 2.2) + '" fill="none"/><path d="' + d + '" stroke="' + c + '" stroke-width="' + (w || 6.4) + '" fill="none"/>';
+  const HOSE = has('schneehose') ? '#3C8D93' : has('matschhose') ? '#3F7FE0' : kurz ? '#5B7FD6' : '#3F9C8C';
+  const limb = (d, c, w) => '<path d="' + d + '" stroke="' + c + '" stroke-width="' + (w || 6.6) + '" fill="none"/>';
   const unten = mantel ? 72 : has('jacke') ? 65 : has('pullover') ? 64 : 61;
-  let g = '';
-  // Kapuze hinter dem Kopf (Regenjacke)
-  if (has('regenjacke')) g += '<circle cx="30" cy="22" r="16.5" ' + F(TOP) + '/>';
-  // Haare hinten (Pagenkopf)
-  g += '<path d="M15.5 24c-1.2-10 5.6-16.5 14.5-16.5S45.7 14 44.5 24l1.6 17.5c.2 2-1.2 3.3-3 3.3h-3.6L38 31H22l-1.5 13.8h-3.6c-1.8 0-3.2-1.3-3-3.3z" ' + F(HAIR) + '/>';
+  let g = '<ellipse cx="30" cy="93.5" rx="17" ry="2.6" fill="#2A2A33" opacity=".1"/>';
+  if (has('regenjacke')) g += '<circle cx="30" cy="22" r="16.5" fill="' + TOP + '"/><path d="M30 5.5a16.5 16.5 0 0 1 0 33z" fill="' + dk(TOP, 0.92) + '"/>';
+  // lange Haare hinten
+  g += '<path d="M15.5 24c-1.2-10 5.6-16.5 14.5-16.5S45.7 14 44.5 24l1.6 17.5c.2 2-1.2 3.3-3 3.3h-3.6L38 31H22l-1.5 13.8h-3.6c-1.8 0-3.2-1.3-3-3.3z" fill="' + dk(HAIR, 0.9) + '"/>';
   // Beine
   if (kurz && !latz) {
-    g += limb('M25.5 62 L25.2 86', SK, 5.6) + limb('M34.5 62 L34.8 86', SK, 5.6);
-    g += '<path d="M19.5 58.5h21l1.2 12.5h-9.5l-2.2-4-2.2 4h-9.5z" ' + F(HOSE) + '/>';
+    g += limb('M25.5 62 L25.3 86', SK, 5.6) + limb('M34.5 62 L34.7 86', SK, 5.6);
+    g += '<path d="M19.5 58.5h21l1.2 12.5h-9.5l-2.2-4-2.2 4h-9.5z" fill="' + HOSE + '"/>';
   } else {
-    g += limb('M25.5 ' + (unten - 6) + ' L25.2 86', HOSE, 6.6) + limb('M34.5 ' + (unten - 6) + ' L34.8 86', HOSE, 6.6);
+    g += limb('M25.5 ' + (unten - 6) + ' L25.3 86', HOSE, 6.8) + limb('M34.5 ' + (unten - 6) + ' L34.7 86', dk(HOSE, 0.9), 6.8);
   }
-  // Schuhe oder Stiefel
+  // Füße
   if (has('stiefel')) {
-    const SC = has('schneehose') ? BROWN : '#5BAA6A';
-    g += '<path d="M20.5 79.5h9.5v12.5h-11a2.2 2.2 0 0 1-.6-4.3l2.1-.8zM30 79.5h9.5v7.4l2.1.8a2.2 2.2 0 0 1-.6 4.3H30z" ' + F(SC) + '/>';
+    const SC = has('schneehose') ? BROWN : '#43B581';
+    g += '<path d="M20.5 79h9.5v13h-11.2a2.2 2.2 0 0 1-.4-4.3l2.1-.7zM30 79h9.5v8l2.1.7a2.2 2.2 0 0 1-.4 4.3H30z" fill="' + SC + '"/><path d="M20.5 79h9.5v3h-9.5zM30 79h9.5v3H30z" fill="' + dk(SC, 0.85) + '"/>';
   } else {
-    g += '<path d="M19.5 86.5h10v5.3h-11.3a2.3 2.3 0 0 1 1.3-5.3zM30.5 86.5h10a2.3 2.3 0 0 1 1.3 5.3H30.5z" ' + F(BROWN) + '/>';
+    g += '<path d="M19.4 86.3h10.1v4.4H17.7a2.2 2.2 0 0 1 1.7-4.4zM30.5 86.3h10.1a2.2 2.2 0 0 1 1.7 4.4H30.5z" fill="#FF6F61"/><path d="M17.3 90.7h12.2v1.7H17.3zM30.5 90.7h12.2v1.7H30.5z" fill="#fff"/>';
   }
-  // Latzhose über dem Oberteil kommt später; erst Arme hinter dem Körper
+  // Arme
   if (kurz) {
-    g += limb('M18.5 42.5 L12 59', SK, 5.4) + limb('M41.5 42.5 L48 59', SK, 5.4);
-    g += limb('M19 41.5 L16.8 47.5', TOP, 6.8) + limb('M41 41.5 L43.2 47.5', TOP, 6.8);
+    g += limb('M18.5 42.5 L12.3 59', SK, 5.4) + limb('M41.5 42.5 L47.7 59', SK, 5.4);
+    g += limb('M19 41.5 L16.9 47.5', TOP, 7) + limb('M41 41.5 L43.1 47.5', dk(TOP, 0.92), 7);
   } else {
-    g += limb('M19 42 L12.5 59', TOP, 7.2) + limb('M41 42 L47.5 59', TOP, 7.2);
+    g += limb('M19 42 L12.6 59', TOP, 7.4) + limb('M41 42 L47.4 59', dk(TOP, 0.9), 7.4);
   }
-  // Körper
-  if (mantel) g += '<path d="M21.5 36.5h17c3 0 5.2 2.2 5.6 5.2l2.6 27.3a3 3 0 0 1-3 3.3H15.3a3 3 0 0 1-3-3.3l2.6-27.3c.4-3 2.6-5.2 5.6-5.2z" ' + F(TOP) + '/>';
-  else g += '<path d="M21.5 36.5h17c3 0 5.2 2.2 5.4 5.2l1 ' + (unten - 42) + 'H15.1l1-' + (unten - 42) + 'c.2-3 2.4-5.2 5.4-5.2z" ' + F(TOP) + '/>';
-  if (has('pullover')) g += '<path d="M15.4 ' + (unten - 2.5) + 'h29.2" stroke="' + dk(TOP) + '" stroke-width="1.2"/>';
-  if (mantel || has('jacke')) g += '<path d="M30 37v' + (unten - 37.5) + '" stroke="' + dk(TOP) + '" stroke-width="1.2"/>';
-  if (mantel) g += '<circle cx="33" cy="49" r="1.3" fill="' + dk(TOP, 0.55) + '"/><circle cx="33" cy="57" r="1.3" fill="' + dk(TOP, 0.55) + '"/><circle cx="33" cy="65" r="1.3" fill="' + dk(TOP, 0.55) + '"/>';
-  if (has('regenjacke')) g += '<path d="M18 53h6M36 53h6" stroke="' + dk(TOP) + '" stroke-width="1.2"/>';
-  if (latz && !mantel) g += '<path d="M22.5 ' + unten + 'V51h15v' + (unten - 51) + '" ' + F(HOSE) + '/><path d="M23.5 51 22.5 38M36.5 51l1-13" stroke="' + dk(HOSE) + '" stroke-width="1.6"/>';
-  // Hände oder Fäustlinge
+  // Körper mit Schattenseite
+  const koerper = mantel
+    ? 'M21.5 36.5h17c3 0 5.2 2.2 5.6 5.2l2.6 27.3a3 3 0 0 1-3 3.3H15.3a3 3 0 0 1-3-3.3l2.6-27.3c.4-3 2.6-5.2 5.6-5.2z'
+    : 'M21.5 36.5h17c3 0 5.2 2.2 5.4 5.2l1 ' + (unten - 42) + 'H15.1l1-' + (unten - 42) + 'c.2-3 2.4-5.2 5.4-5.2z';
+  g += '<path d="' + koerper + '" fill="' + TOP + '"/>';
+  g += '<clipPath id="kk' + h + liste.join('') + '"><path d="' + koerper + '"/></clipPath><rect x="33" y="30" width="20" height="50" fill="' + dk(TOP, 0.92) + '" clip-path="url(#kk' + h + liste.join('') + ')"/>';
+  if (has('pullover')) g += '<path d="M15.6 ' + (unten - 3.2) + 'h28.8v3.2H15.6z" fill="' + dk(TOP, 0.85) + '"/>';
+  if (mantel || has('jacke')) g += '<path d="M29.4 37h1.2v' + (unten - 37.5) + 'h-1.2z" fill="' + dk(TOP, 0.75) + '"/>';
+  if (mantel) g += '<circle cx="33" cy="49" r="1.2" fill="#fff" opacity=".85"/><circle cx="33" cy="57" r="1.2" fill="#fff" opacity=".85"/><circle cx="33" cy="65" r="1.2" fill="#fff" opacity=".85"/>';
+  if (has('regenjacke')) g += '<path d="M18 52.5h6v2h-6zM36 52.5h6v2h-6z" fill="' + dk(TOP, 0.8) + '"/>';
+  if (latz && !mantel) g += '<path d="M22.5 ' + unten + 'V51h15v' + (unten - 51) + 'z" fill="' + HOSE + '"/><path d="M22.6 51.5 21.5 38M37.4 51.5l1.1-13.5" stroke="' + HOSE + '" stroke-width="2"/>';
+  // Hände / Fäustlinge
   const HA = has('handschuhe') ? BROWN : SK;
-  g += '<circle cx="12" cy="61" r="3.9" ' + F(HA) + '/><circle cx="48" cy="61" r="3.9" ' + F(HA) + '/>';
-  // Hals und Kopf
-  g += '<path d="M27 33h6v4.5h-6z" fill="' + SK + '"/><circle cx="30" cy="22" r="13" ' + F(SK) + '/>';
-  // Schal
-  if (has('winterjacke')) g += '<path d="M19.5 34.5c6 2.4 15 2.4 21 0l.6 4.6c-6.6 2.6-15.6 2.6-22.2 0z" ' + F('#EDB33C') + '/><path d="M33 38.5h5.4l.8 13.5-2.8-1.4-2.6 1.6z" ' + F('#EDB33C') + '/>';
-  // Pony
-  if (!has('muetze')) g += '<path d="M16.8 21.5C16.6 13.6 22.4 9 30 9s13.4 4.6 13.2 12.5l-2.4-1.6-2.3 1.8-2.4-1.8-2.4 1.8-2.4-1.8-2.3 1.8-2.4-1.8-2.4 1.8-2.3-1.8-2.4 1.8-2.4-1.8z" ' + F(HAIR) + '/>';
-  // Mütze mit Bommel
+  g += '<circle cx="12.2" cy="61" r="3.8" fill="' + HA + '"/><circle cx="47.8" cy="61" r="3.8" fill="' + dk(HA, 0.93) + '"/>';
+  // Hals, Kopf
+  g += '<path d="M27 32h6v5h-6z" fill="' + dk(SK, 0.92) + '"/><circle cx="30" cy="22" r="13" fill="' + SK + '"/>';
+  if (has('winterjacke')) g += '<path d="M19.5 34.5c6 2.4 15 2.4 21 0l.6 4.6c-6.6 2.6-15.6 2.6-22.2 0z" fill="#FFC94A"/><path d="M33 38.5h5.4l.8 13.5-2.8-1.4-2.6 1.6z" fill="#F2B632"/>';
+  // Pony / Mütze / Hut
+  if (!has('muetze')) g += '<path d="M16.8 21.5C16.6 13.6 22.4 9 30 9s13.4 4.6 13.2 12.5l-2.4-1.6-2.3 1.8-2.4-1.8-2.4 1.8-2.4-1.8-2.3 1.8-2.4-1.8-2.4 1.8-2.3-1.8-2.4 1.8-2.4-1.8z" fill="' + HAIR + '"/><path d="M22 12.5c2-1.6 4.4-2.4 7-2.5" stroke="#fff" stroke-width="1.3" opacity=".55" fill="none"/>';
   if (has('muetze')) {
-    const MC = has('winterjacke') ? '#E8743B' : '#9B7FD1';
-    g += '<path d="M16.2 19.5C16.2 11.5 22.4 6.5 30 6.5s13.8 5 13.8 13z" ' + F(MC) + '/><rect x="15" y="16.5" width="30" height="6.5" rx="3.2" ' + F(dk(MC, 0.88)) + '/>';
-    g += '<path d="M19 17v6M22 17v6M25 17v6M28 17v6M31 17v6M34 17v6M37 17v6M40 17v6" stroke="' + dk(MC) + '" stroke-width=".9" opacity=".7"/>';
-    g += '<path d="M19 22.6l2.6 1 2.6-1 2.6 1 2.6-1 2.6 1 2.6-1 2.6 1 2.6-1 2.6 1V22H19z" ' + F(HAIR) + '/>';
+    const MC = has('winterjacke') ? '#F2784B' : '#8C7AE6';
+    g += '<path d="M19 22.6l2.6 1 2.6-1 2.6 1 2.6-1 2.6 1 2.6-1 2.6 1 2.6-1 2.6 1V21H19z" fill="' + HAIR + '"/>';
+    g += '<path d="M16.2 19.5C16.2 11.5 22.4 6.5 30 6.5s13.8 5 13.8 13z" fill="' + MC + '"/><path d="M30 6.5c7.6 0 13.8 5 13.8 13H30z" fill="' + dk(MC, 0.93) + '"/><rect x="15" y="16.5" width="30" height="6.3" rx="3.15" fill="' + dk(MC, 0.86) + '"/>';
   }
-  // Sonnenhut
-  if (has('kappe')) g += '<ellipse cx="30" cy="13.5" rx="19" ry="4" ' + F('#E9C46A') + '/><path d="M20 13.5c0-5.5 4.5-9 10-9s10 3.5 10 9z" ' + F('#E9C46A') + '/><path d="M20.3 11.5h19.4" stroke="#D9534F" stroke-width="1.8"/>';
+  if (has('kappe')) g += '<ellipse cx="30" cy="13.5" rx="19" ry="3.8" fill="#F4D06F"/><path d="M20 13.5c0-5.5 4.5-9 10-9s10 3.5 10 9z" fill="#E9BE4F"/><path d="M20.2 10.8h19.6v2.2H20.2z" fill="#FF6F61"/>';
   // Gesicht
-  g += '<ellipse cx="25" cy="24.5" rx="1.9" ry="2.4" fill="#3B2A20"/><ellipse cx="35" cy="24.5" rx="1.9" ry="2.4" fill="#3B2A20"/><circle cx="25.6" cy="23.6" r=".7" fill="#fff"/><circle cx="35.6" cy="23.6" r=".7" fill="#fff"/>';
-  g += '<ellipse cx="21" cy="28.5" rx="2.8" ry="1.9" fill="#F29C8F" opacity=".55"/><ellipse cx="39" cy="28.5" rx="2.8" ry="1.9" fill="#F29C8F" opacity=".55"/>';
-  g += '<path d="M29.4 26.6q.6.9 1.2 0" stroke="#C98B6B" stroke-width="1" fill="none"/><path d="M26.6 29.6q3.4 2.6 6.8 0" stroke="#8A4B35" stroke-width="1.3" fill="none"/>';
-  const korn = '<filter id="korn" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="2" seed="4" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 .25  0 0 0 0 .15  0 0 0 0 .05  0 0 0 -.5 .22" result="k"/><feComposite in="k" in2="SourceGraphic" operator="in" result="m"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="m"/></feMerge></filter>';
-  return '<svg width="' + Math.round(h * 0.6) + '" height="' + h + '" viewBox="0 0 60 100" stroke-linecap="round" stroke-linejoin="round" aria-label="Kind angezogen"><defs>' + korn + '</defs><g filter="url(#korn)">' + g + '</g></svg>';
+  g += '<ellipse cx="25.2" cy="24.6" rx="1.6" ry="2" fill="#2E2A3A"/><ellipse cx="34.8" cy="24.6" rx="1.6" ry="2" fill="#2E2A3A"/><circle cx="25.7" cy="23.9" r=".55" fill="#fff"/><circle cx="35.3" cy="23.9" r=".55" fill="#fff"/>';
+  g += '<ellipse cx="21.2" cy="28.4" rx="2.4" ry="1.5" fill="#FF8F8F" opacity=".45"/><ellipse cx="38.8" cy="28.4" rx="2.4" ry="1.5" fill="#FF8F8F" opacity=".45"/>';
+  g += '<path d="M27 29.4q3 2.4 6 0" stroke="#2E2A3A" stroke-width="1.3" fill="none"/>';
+  return '<svg width="' + Math.round(h * 0.6) + '" height="' + h + '" viewBox="0 0 60 100" stroke-linecap="round" stroke-linejoin="round" aria-label="Kind angezogen">' + g + '</svg>';
 }
 function anziehenHtml(dIso, titel) {
   const liste = anziehenFuer(dIso);
