@@ -381,6 +381,7 @@ function defaults() {
       nachm:   [null, 'Schwimmen', null, 'Garten', null, null, null],
       bett:    ['M', 'P', 'M', 'P', 'P', 'M', 'P'],
       sport:   [false, false, false, false, false, false, false],
+      yoga:    [false, false, false, false, false, false, false],
       kita:    { von: 420, bis: 900 }
     },
     special: {},
@@ -398,18 +399,30 @@ S.stich = S.stich || { J: ['Oma'], Schwimmen: ['Schwimmkurs'], Freunde: ['Playda
 S.acts = S.acts || {};
 S.done = S.done || {};
 const kitaZeit = () => (S.week && S.week.kita) || { von: 420, bis: 900 };
-// Kita-Sport: Standard-Woche, für einzelne Tage änderbar (Kita-Block antippen)
-function sportAm(d) {
+// Kita-Sport / Kita-Yoga: Standard-Woche, für einzelne Tage änderbar (Kita-Block antippen)
+const KITA_AKT = { sport: /sport|turn/i, yoga: /yoga/i };
+function kitaAktAm(d, art) {
   const w = (d.getDay() + 6) % 7;
-  if (w >= 5 || (S.special && S.special[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')])) return false;
-  const o = (S.over || {})[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '|sport'];
-  if (o && typeof o.on === 'boolean') return o.on;
-  if (S.week && S.week.sport && S.week.sport[w]) return true;
-  // Google-Termin mit „Sport“ oder „Turnen“ an diesem Tag
   const di = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  const istSport = (t) => /sport|turn/i.test(String(t || ''));
-  if ((S.entries || []).some((x) => x.date === di && (istSport(x.sym) || istSport(symLabel(x.sym))))) return true;
-  return typeof G !== 'undefined' && G.events.some((e) => e.date === di && istSport(e.title));
+  if (w >= 5 || (S.special && S.special[di])) return false;
+  const o = (S.over || {})[di + '|' + art];
+  if (o && typeof o.on === 'boolean') return o.on;
+  if (S.week && S.week[art] && S.week[art][w]) return true;
+  // Google-Termin oder eigener Eintrag mit passendem Wort an diesem Tag
+  const passt = (t) => KITA_AKT[art].test(String(t || ''));
+  if ((S.entries || []).some((x) => x.date === di && (passt(x.sym) || passt(symLabel(x.sym))))) return true;
+  return typeof G !== 'undefined' && G.events.some((e) => e.date === di && passt(e.title));
+}
+const sportAm = (d) => kitaAktAm(d, 'sport');
+const yogaAm = (d) => kitaAktAm(d, 'yoga');
+const YOGA_PATH = '<path d="M5.5 17.2c2-2.2 11-2.2 13 0-2 1.8-11 1.8-13 0z" fill="#EDE4F7"/><circle cx="12" cy="5" r="2.1" fill="#EDE4F7"/><path d="M12 7.6v6.2M12 9.4l-3.6 3.2-2 2.2M12 9.4l3.6 3.2 2 2.2"/><path d="M3 20.5h18" stroke-width="1.4" opacity=".5"/>';
+const yogaSvg = (size) => '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="#7B5BB0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-label="Yoga">' + YOGA_PATH + '</svg>';
+// Abzeichen im Kita-Block (Sport, Yoga)
+function kitaBadges(it, size, lblStyle, zeile) {
+  const st = zeile ? ' style="flex-direction:row;margin:0"' : '';
+  const ys = zeile ? ' style="flex-direction:row;margin:0;background:#F4EEFB;border-color:#A98BD6;color:#5E3F94"' : ' style="background:#F4EEFB;border-color:#A98BD6;color:#5E3F94"';
+  return (it.sport ? '<div class="sportbadge"' + st + '>' + sportSvg(size) + '<span' + (lblStyle || '') + '>Sport</span></div>' : '') +
+    (it.yoga ? '<div class="sportbadge"' + ys + '>' + yogaSvg(size) + '<span' + (lblStyle || '') + '>Yoga</span></div>' : '');
 }
 const SPORT_PATH = '<path d="M3 16.5c0-1.2.8-2 2-2.3l4.2-1L11 9h3.2l.8 2.3c1.7.4 3.6.6 5.3.6a1.7 1.7 0 0 1 1.7 1.7V16a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 16z" fill="#FFE1C2"/><path d="M3 15.5h19M10 11.5l1.5 1.2M11.4 10l1.5 1.2M7.5 13.3 9 14.5"/><path d="M3 19.5h19" stroke-width="1.4" opacity=".5"/>';
 const sportSvg = (size) => '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="#D2691E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-label="Sport">' + SPORT_PATH + '</svg>';
@@ -587,7 +600,7 @@ function itemsFor(d) {
   const realStd = std;
   const stdG = (slot, s, e, extra) => { if (!roleOver[slot]) realStd(slot, s, e, extra); };
   if (kitaDay && P(wk.bringt[w])) stdG('bringt', kz.von - 60, kz.von, { person: wk.bringt[w], text: P(wk.bringt[w]).name + ' bringt' });
-  if (kitaDay) out.push({ s: kz.von, e: kz.bis, kita: true, sport: sportAm(d) });
+  if (kitaDay) out.push({ s: kz.von, e: kz.bis, kita: true, sport: sportAm(d), yoga: yogaAm(d) });
   if (kitaDay && P(wk.abholen[w])) stdG('abholen', kz.bis, kz.bis + 60, { person: wk.abholen[w], text: P(wk.abholen[w]).name + ' holt ab' });
   if (wk.nachm[w]) {
     const ns = Math.min(kitaDay ? kz.bis + 60 : 900, END - 60), ne = Math.min(ns + 120, END);
@@ -694,7 +707,7 @@ function render() {
       const lblStyle = tiny ? ' style="font-size:13px"' : (compact ? ' style="font-size:15px"' : '');
       if (it.kita) {
         col += '<div class="card kitablock tall" data-kita="1" style="cursor:pointer;top:' + top + 'px;height:' + hgt + 'px;left:' + left + ';width:' + width + '"><svg width="' + (tiny ? 30 : 44) + '" height="' + (tiny ? 30 : 44) + '" viewBox="0 0 24 24" fill="none" stroke="#2F6FB0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + KITA_PATH + '</svg><span class="lbl"' + lblStyle + '>Kita</span>' +
-          (it.sport ? '<div class="sportbadge">' + sportSvg(tiny ? 30 : 44) + '<span' + lblStyle + '>Sport</span></div>' : '') + '</div>';
+          kitaBadges(it, tiny ? 30 : 44, lblStyle, false) + '</div>';
         return;
       }
       if (it.unknown) {
@@ -1033,7 +1046,7 @@ function zeitleisteHtml(d, H) {
     const pos = 'top:' + top + 'px;height:' + hg + 'px;left:' + (4 + ind) + 'px;right:4px;z-index:' + (it.kita ? 1 : (it.z || 2)) + ';';
     if (it.kita) {
       h += '<div class="card kitablock" style="' + pos + 'flex-direction:column;justify-content:center;gap:6px"><div style="display:flex;align-items:center;gap:8px">' + L.icon + '<span class="lbl">Kita ' + fmt(it.s) + '–' + fmt(it.e) + '</span></div>' +
-        (it.sport ? '<div class="sportbadge" style="flex-direction:row;margin:0">' + sportSvg(34) + '<span>Sport</span></div>' : '') + '</div>';
+        kitaBadges(it, 34, '', true) + '</div>';
       return;
     }
     h += '<div class="card' + (past ? ' past' : '') + '" style="' + pos + 'border-color:' + L.color + (it.depth ? ';box-shadow:0 -3px 10px rgba(42,42,51,.18)' : '') + '"><span class="tl-z">' + fmt(it.s) + '</span>' + L.icon + '<span class="lbl">' + L.label + '</span>' + (it.own ? STAR : '') + '</div>';
@@ -1060,7 +1073,7 @@ function renderHome() {
 }
 
 // ---------- Neue Version automatisch laden ----------
-const BUILD = '2026-11-23-1845b';
+const BUILD = '2026-11-26-1540';
 async function pruefeUpdate() {
   try {
     const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -1257,15 +1270,20 @@ function openEdit(day, it) {
 }
 
 function openSport(day) {
-  const an = sportAm(day), layer = $('layer');
-  const key = iso(day) + '|sport';
-  const btn = (v, inner, label) => '<button class="tile' + (an === v ? ' on' : '') + '" data-sp="' + v + '">' + inner + '<span>' + label + '</span></button>';
-  layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet" style="width:min(560px,100%)">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between"><div><div class="sub">' + DAYS_LONG[day.getDay()] + ', ' + day.getDate() + '. ' + MONTHS[day.getMonth()] + '</div><h2>Ist Sport in der Kita?</h2></div>' +
+  const sp = sportAm(day), yo = yogaAm(day), layer = $('layer');
+  const wahl = sp && !yo ? 'sport' : (yo && !sp ? 'yoga' : (!sp && !yo ? 'nichts' : ''));
+  const btn = (v, inner, label) => '<button class="tile' + (wahl === v ? ' on' : '') + '" data-sp="' + v + '">' + inner + '<span>' + label + '</span></button>';
+  layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet" style="width:min(640px,100%)">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between"><div><div class="sub">' + DAYS_LONG[day.getDay()] + ', ' + day.getDate() + '. ' + MONTHS[day.getMonth()] + '</div><h2>Was ist in der Kita?</h2></div>' +
     '<button class="round" id="closeBtn" aria-label="Schließen"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
-    '<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))">' + btn(true, sportSvg(72), 'Ja, Sport') + btn(false, '<span style="font-size:56px;color:#B5AB9A;line-height:72px">–</span>', 'Kein Sport') + '</div>' +
+    '<div class="tiles" style="grid-template-columns:repeat(3,minmax(0,1fr))">' + btn('sport', sportSvg(72), 'Sport') + btn('yoga', yogaSvg(72), 'Yoga') + btn('nichts', '<span style="font-size:56px;color:#B5AB9A;line-height:72px">–</span>', 'Nichts') + '</div>' +
     '<div class="muted" style="font-size:16px">Gilt nur für diesen Tag. Die Standard-Woche bleibt gleich.</div></div></div>';
-  layer.querySelectorAll('[data-sp]').forEach((b) => b.onclick = () => { S.over = S.over || {}; S.over[key] = { on: b.dataset.sp === 'true' }; save(); layer.innerHTML = ''; render(); });
+  layer.querySelectorAll('[data-sp]').forEach((b) => b.onclick = () => {
+    const v = b.dataset.sp; S.over = S.over || {};
+    S.over[iso(day) + '|sport'] = { on: v === 'sport' };
+    S.over[iso(day) + '|yoga'] = { on: v === 'yoga' };
+    save(); layer.innerHTML = ''; render();
+  });
   $('closeBtn').onclick = () => { layer.innerHTML = ''; };
   $('ov').onclick = (ev) => { if (ev.target.id === 'ov') layer.innerHTML = ''; };
 }
@@ -1459,6 +1477,12 @@ function tabWoche(el) {
     const inner = i >= 5 ? '<span style="font-size:22px;color:#B5AB9A">–</span>' : (v ? sportSvg(40) : '<span style="font-size:22px;color:#C9BFAE">+</span>');
     h += '<button class="cell" data-sport="' + i + '"' + (i >= 5 ? ' style="background:#F7FBF7"' : '') + '>' + inner + '</button>';
   });
+  S.week.yoga = S.week.yoga || [false, false, false, false, false, false, false];
+  h += '<div class="rl">Kita-Yoga</div>';
+  S.week.yoga.forEach((v, i) => {
+    const inner = i >= 5 ? '<span style="font-size:22px;color:#B5AB9A">–</span>' : (v ? yogaSvg(40) : '<span style="font-size:22px;color:#C9BFAE">+</span>');
+    h += '<button class="cell" data-yoga="' + i + '"' + (i >= 5 ? ' style="background:#F7FBF7"' : '') + '>' + inner + '</button>';
+  });
   h += '</div>';
   const kz = kitaZeit();
   h += '<h2 style="font-size:24px;margin-top:10px">Kita-Zeit (Montag bis Freitag)</h2><div class="timerow" style="background:#fff;border:2px solid #E7E1D8">' +
@@ -1477,6 +1501,10 @@ function tabWoche(el) {
   el.querySelectorAll('[data-sport]').forEach((c) => c.onclick = () => {
     const i = +c.dataset.sport; if (i >= 5) return;
     S.week.sport[i] = !S.week.sport[i]; save(); tabWoche(el);
+  });
+  el.querySelectorAll('[data-yoga]').forEach((c) => c.onclick = () => {
+    const i = +c.dataset.yoga; if (i >= 5) return;
+    S.week.yoga[i] = !S.week.yoga[i]; save(); tabWoche(el);
   });
   el.querySelectorAll('.cell[data-k]').forEach((c) => c.onclick = () => {
     const key = c.dataset.k, i = +c.dataset.i;
