@@ -1185,7 +1185,7 @@ function renderHome() {
 }
 
 // ---------- Neue Version automatisch laden ----------
-const BUILD = '2026-11-28-1210';
+const BUILD = '2026-11-28-1245';
 async function pruefeUpdate() {
   try {
     const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -1699,24 +1699,26 @@ function tabEintraege(el) {
   };
 }
 
-let neuW = { wer: 'N', alle: 7 };
+let neuW = { wer: 'N', alle: 7, tag: null };
+const WTAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 function tabAufgaben(el) {
   aufgInit();
   const sel = 'border-color:#2A2A33;background:#2A2A33;color:#fff';
-  let h = '<h2>Aufgaben</h2><div class="muted" style="font-size:18px">Wiederkehrende Aufgaben erscheinen am Starttag und dann immer im gewählten Abstand auf der Startseite. Noras Aufgaben für morgens und abends sind fest eingebaut.</div>';
+  let h = '<h2>Aufgaben</h2><div class="muted" style="font-size:18px">Wiederkehrende Aufgaben erscheinen am gewählten Wochentag (bzw. jeden Tag) auf der Startseite. Noras Aufgaben für morgens und abends sind fest eingebaut.</div>';
   h += '<h2 style="font-size:24px;margin-top:10px">Wiederkehrende Aufgaben</h2>';
   if (!S.aufg.wieder.length) h += '<div class="row muted" style="font-size:18px">Noch keine.</div>';
   S.aufg.wieder.forEach((a) => {
     const d = new Date(a.start + 'T00:00:00');
     h += '<div class="row"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + aufgIcon(a.wort) + '</svg>' + werBild(a.wer, 36) +
-      '<div style="flex:1"><div style="font-size:19px;font-weight:700">' + esc(a.wort) + '</div><div class="muted">' + esc(werName(a.wer)) + ' · ' + rhythmusText(a.alle) + ' · ab ' + DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + '. ' + MONTHS[d.getMonth()] + '</div></div>' +
+      '<div style="flex:1"><div style="font-size:19px;font-weight:700">' + esc(a.wort) + '</div><div class="muted">' + esc(werName(a.wer)) + ' · ' + rhythmusText(a.alle) + (a.alle > 1 ? ' am ' + WTAGE[(d.getDay() + 6) % 7] + ' · ab ' + d.getDate() + '. ' + MONTHS[d.getMonth()] : '') + '</div></div>' +
       '<button class="pill-btn" data-wdel="' + esc(a.id) + '">Löschen</button></div>';
   });
   h += '<div class="row" style="flex-direction:column;align-items:stretch;gap:12px;margin-top:8px"><div style="font-size:20px;font-weight:700">Neue wiederkehrende Aufgabe</div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:8px">' + werListe().map((w) => '<button class="pill-btn" data-nwer="' + w + '" style="display:flex;align-items:center;gap:8px;' + (werNorm(neuW.wer) === w ? sel : '') + '">' + werBild(w, 28) + esc(werName(w)) + '</button>').join('') + '</div>' +
     '<label class="field">Was?<input id="nwText" type="text" maxlength="60" placeholder="z. B. Müll rausbringen"></label>' +
     '<div style="display:flex;flex-wrap:wrap;gap:8px">' + RHYTHMUS.map(([n, t]) => '<button class="pill-btn" data-nalle="' + n + '" style="' + (neuW.alle === n ? sel : '') + '">' + t + '</button>').join('') + '</div>' +
-    '<label class="field">Erster Tag<input id="nwStart" type="date" value="' + iso(today0()) + '"></label>' +
+    (neuW.alle > 1 ? '<div style="font-size:17px;font-weight:700">An welchem Wochentag?</div><div style="display:flex;flex-wrap:wrap;gap:8px">' + WTAGE.map((t, i) => '<button class="pill-btn" data-ntag="' + i + '" style="' + (neuW.tag === i ? sel : '') + '">' + t + '</button>').join('') + '</div>' : '') +
+    '<div id="nwHinweis" style="color:#B3342D;font-weight:700;display:none"></div>' +
     '<button class="done-btn" id="nwAdd" style="width:240px;height:60px;font-size:22px;align-self:flex-start">Hinzufügen</button></div>';
   const offen = S.aufg.einzel.filter((e) => !e.erledigt);
   h += '<h2 style="font-size:24px;margin-top:10px">Offene einzelne Aufgaben</h2><div class="muted">Werden auf der Startseite mit dem Plus angelegt und verschwinden am Tag nach dem Abhaken.</div>';
@@ -1725,16 +1727,19 @@ function tabAufgaben(el) {
     h += '<div class="row">' + werBild(e.wer, 36) + '<div style="flex:1"><div style="font-size:19px;font-weight:700">' + esc(e.wort) + '</div><div class="muted">' + esc(werName(e.wer)) + '</div></div><button class="pill-btn" data-edel="' + esc(e.id) + '">Löschen</button></div>';
   });
   el.innerHTML = h;
-  const merk = () => { neuW.text = $('nwText').value; neuW.start = $('nwStart').value; };
+  const merk = () => { neuW.text = $('nwText').value; };
   if (neuW.text) $('nwText').value = neuW.text;
-  if (neuW.start) $('nwStart').value = neuW.start;
   el.querySelectorAll('[data-nwer]').forEach((b) => b.onclick = () => { merk(); neuW.wer = b.dataset.nwer; tabAufgaben(el); });
   el.querySelectorAll('[data-nalle]').forEach((b) => b.onclick = () => { merk(); neuW.alle = +b.dataset.nalle; tabAufgaben(el); });
+  el.querySelectorAll('[data-ntag]').forEach((b) => b.onclick = () => { merk(); neuW.tag = +b.dataset.ntag; tabAufgaben(el); });
   $('nwAdd').onclick = () => {
-    const wort = $('nwText').value.trim(), start = $('nwStart').value || iso(today0());
-    if (!wort) { $('nwText').focus(); return; }
+    const wort = $('nwText').value.trim(), hw = $('nwHinweis');
+    if (!wort) { hw.textContent = 'Bitte eintragen, was gemacht werden soll.'; hw.style.display = ''; $('nwText').focus(); return; }
+    if (neuW.alle > 1 && neuW.tag === null) { hw.textContent = 'Bitte einen Wochentag auswählen.'; hw.style.display = ''; return; }
+    // Start: heute bzw. der nächste gewählte Wochentag
+    const t0 = today0(), start = iso(neuW.alle > 1 ? addDays(t0, (neuW.tag - (t0.getDay() + 6) % 7 + 7) % 7) : t0);
     S.aufg.wieder.push({ id: 'w' + Date.now(), wer: neuW.wer, wort, start, alle: neuW.alle });
-    neuW = { wer: neuW.wer, alle: neuW.alle };
+    neuW = { wer: neuW.wer, alle: neuW.alle, tag: null };
     save(); render(); tabAufgaben(el);
   };
   el.querySelectorAll('[data-wdel]').forEach((b) => b.onclick = () => {
