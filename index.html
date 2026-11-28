@@ -398,6 +398,7 @@ S.over = S.over || {};
 S.stich = S.stich || { J: ['Oma'], Schwimmen: ['Schwimmkurs'], Freunde: ['Playdate', 'spielen'] };
 S.acts = S.acts || {};
 S.done = S.done || {};
+aufgInit();
 const kitaZeit = () => (S.week && S.week.kita) || { von: 420, bis: 900 };
 // Kita-Sport / Kita-Yoga: Standard-Woche, für einzelne Tage änderbar (Kita-Block antippen)
 const KITA_AKT = { sport: /sport|turn/i, yoga: /yoga/i, ausflug: /ausflug/i };
@@ -444,7 +445,7 @@ const sportSvg = (size) => '<svg width="' + size + '" height="' + size + '" view
 // ---------- Supabase ----------
 const SUPABASE_URL = 'https://zybcckfhjmdrrsayrquu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IJZcClgYEFDN2OSPTmGMhQ_ASrXPNlc';
-const PARTS = ['persons', 'week', 'special', 'entries', 'over', 'stich', 'acts', 'done'];
+const PARTS = ['persons', 'week', 'special', 'entries', 'over', 'stich', 'acts', 'done', 'aufg'];
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 const synced = {};
 let online = false;
@@ -476,6 +477,7 @@ async function loadRemote() {
   S.stich = S.stich || {};
   S.acts = S.acts || {};
   S.done = S.done || {};
+aufgInit();
   cache();
   // Beim allerersten Start die Beispieldaten hochladen
   if (PARTS.some((p) => !have[p])) save();
@@ -998,44 +1000,103 @@ function aufgabenFuer() {
   if (itemsFor(morgen).some((it) => it.sym === 'Schwimmen')) liste.push(['schwimmen', 'Schwimmsachen packen']);
   return { block: 'a', titel: 'Abends', d: t0, liste };
 }
-// Aufgaben für Erwachsene: alle n Tage ab einem Starttag; bleibt bis zu 3 Tage stehen, solange nicht abgehakt
-const ERW_AUFGABEN = [
-  { wer: 'Lisa', key: 'blumen', wort: 'Blumen gießen', start: '2026-11-28', alleTage: 14 }
-];
-function personKey(name) {
-  const k = Object.keys(S.persons || {}).find((x) => (S.persons[x].name || '').toLowerCase() === name.toLowerCase());
-  return k || (name === 'Lisa' && S.persons && S.persons.M ? 'M' : null);
+// Aufgaben pro Person. S.aufg = { wieder: [{ id, wer, wort, start, alle }], einzel: [{ id, wer, wort, erledigt }] }
+// wer: Personen-Schlüssel oder 'N' für Nora. Noras Morgen-/Abend-Aufgaben sind fest eingebaut.
+function aufgInit() {
+  if (!S.aufg) {
+    const lisa = Object.keys(S.persons || {}).find((x) => /^lisa$/i.test(S.persons[x].name || '')) || 'M';
+    S.aufg = { wieder: [{ id: 'blumen', wer: lisa, wort: 'Blumen gießen', start: '2026-11-28', alle: 14 }], einzel: [] };
+  }
+  S.aufg.wieder = S.aufg.wieder || []; S.aufg.einzel = S.aufg.einzel || [];
 }
-function erwAufgabenHeute() {
-  const t0 = today0(), out = {};
-  ERW_AUFGABEN.forEach((a) => {
-    const [y, m, d] = a.start.split('-').map(Number);
+const RHYTHMUS = [[1, 'Jeden Tag'], [7, 'Jede Woche'], [14, 'Alle 2 Wochen'], [28, 'Alle 4 Wochen']];
+const rhythmusText = (n) => (RHYTHMUS.find((x) => x[0] === n) || [0, 'Alle ' + n + ' Tage'])[1];
+const werName = (w) => w === 'N' ? 'Nora' : ((S.persons[w] && S.persons[w].name) || '?');
+const werBild = (w, size) => w === 'N' ? STAR.replace(/width="24" height="24"/, 'width="' + size + '" height="' + size + '"') : avatar(w, size);
+const werListe = () => ['N'].concat(Object.keys(S.persons || {}));
+const AUFG_ALLG = '<rect x="5" y="4" width="14" height="17" rx="2" fill="#FFF7D6" stroke="#B9770E"/><path d="M9 4V2.8h6V4M8.5 10l1.2 1.2 2-2.2M13.5 10.5h2M8.5 15l1.2 1.2 2-2.2M13.5 15.5h2" stroke="#B9770E"/>';
+function aufgIcon(wort) {
+  const w = String(wort || '').toLowerCase();
+  if (/blume|gie(ß|ss)|pflanze/.test(w)) return AUFG_ICON.blumen;
+  if (/zähne|zahn/.test(w)) return AUFG_ICON.zaehne;
+  if (/haare|kämmen/.test(w)) return AUFG_ICON.haare;
+  if (/schlafanzug/.test(w)) return AUFG_ICON.schlafanzug;
+  if (/anziehen/.test(w)) return AUFG_ICON.anziehen;
+  if (/schwimm/.test(w)) return AUFG_ICON.schwimmen;
+  if (/rucksack|packen/.test(w)) return AUFG_ICON.rucksack;
+  return AUFG_ALLG;
+}
+// Wiederkehrende Aufgaben: am Fälligkeitstag, bleibt bis zu 3 Tage stehen, solange nicht abgehakt
+function wiederHeute() {
+  const t0 = today0(), out = [];
+  S.aufg.wieder.forEach((a) => {
+    const [y, m, d] = String(a.start).split('-').map(Number);
     const tage = Math.round((t0 - new Date(y, m - 1, d)) / 86400000);
-    if (tage < 0) return;
-    const seit = tage % a.alleTage; // Tage seit dem letzten Fälligkeitstag
-    if (seit > 2) return;
-    const key = iso(addDays(t0, -seit)) + '|erw|' + a.key;
-    if (seit > 0 && S.done[key]) return; // an Folgetagen nur, solange nicht erledigt
-    (out[a.wer] = out[a.wer] || []).push([a.key, a.wort, key]);
+    if (!(tage >= 0) || !(a.alle >= 1)) return;
+    const seit = tage % a.alle;
+    if (seit > Math.min(2, a.alle - 1)) return;
+    const key = iso(addDays(t0, -seit)) + '|erw|' + a.id;
+    if (seit > 0 && S.done[key]) return;
+    out.push({ wer: a.wer, icon: aufgIcon(a.wort), wort: a.wort, key });
   });
   return out;
 }
+function einzelHeute() {
+  const heute = iso(today0());
+  S.aufg.einzel = S.aufg.einzel.filter((e) => !e.erledigt || e.erledigt >= heute);
+  return S.aufg.einzel.map((e) => ({ wer: e.wer, icon: aufgIcon(e.wort), wort: e.wort, key: 'einzel|' + e.id }));
+}
+const istErledigt = (key) => key.startsWith('einzel|') ? !!(S.aufg.einzel.find((e) => 'einzel|' + e.id === key) || {}).erledigt : !!S.done[key];
+// Abschnitte nach Personen: Nora zuerst, dann alle anderen in der Reihenfolge der Personen
+function aufgabenAbschnitte() {
+  aufgInit();
+  const A = aufgabenFuer(), base = iso(A.d) + '|' + A.block + '|';
+  const alle = wiederHeute().concat(einzelHeute());
+  const sek = [];
+  werListe().forEach((w) => {
+    let items = alle.filter((x) => x.wer === w);
+    if (w === 'N') items = A.liste.map(([k, wort]) => ({ wer: 'N', icon: AUFG_ICON[k], wort, key: base + k })).concat(items);
+    if (items.length) sek.push({ wer: w, titel: w === 'N' ? A.titel : '', items });
+  });
+  return sek;
+}
 const HAKEN = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-const taskBtn = (k, w, key) => { const ok = !!S.done[key]; return '<button class="task' + (ok ? ' ok' : '') + '" data-t="' + key + '"><svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + AUFG_ICON[k] + '</svg><span class="w">' + w + '</span><span class="box">' + (ok ? HAKEN : '') + '</span></button>'; };
+const taskBtn = (it) => { const ok = istErledigt(it.key); return '<button class="task' + (ok ? ' ok' : '') + '" data-t="' + esc(it.key) + '"><svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + it.icon + '</svg><span class="w">' + esc(it.wort) + '</span><span class="box">' + (ok ? HAKEN : '') + '</span></button>'; };
 function aufgabenPanel() {
-  const A = aufgabenFuer(), base = iso(A.d) + '|' + A.block + '|', E = erwAufgabenHeute();
-  const fertig = A.liste.filter(([k]) => S.done[base + k]).length;
-  const kopf = (bild, name, zusatz) => '<div style="display:flex;align-items:center;gap:8px;font-size:clamp(18px,1.6vw,22px);font-weight:700;margin-top:4px">' + bild + name + (zusatz ? '<span class="muted" style="font-weight:400;font-size:16px">· ' + zusatz + '</span>' : '') + '</div>';
-  let h = '<div class="panel" id="todoPanel"><h2><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3E8E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>Aufgaben</h2><div class="tlist">';
-  h += kopf(STAR, 'Nora', A.titel);
-  A.liste.forEach(([k, w]) => { h += taskBtn(k, w, base + k); });
-  if (fertig === A.liste.length) h += '<div class="super">' + STAR + ' Super gemacht! ' + STAR + '</div>';
-  Object.keys(E).forEach((wer) => {
-    const pk = personKey(wer);
-    h += kopf(pk ? avatar(pk, 32) : '', esc(wer));
-    E[wer].forEach(([k, w, key]) => { h += taskBtn(k, w, key); });
+  const kopf = (w, zusatz) => '<div style="display:flex;align-items:center;gap:8px;font-size:clamp(18px,1.6vw,22px);font-weight:700;margin-top:4px">' + werBild(w, w === 'N' ? 26 : 32) + esc(werName(w)) + (zusatz ? '<span class="muted" style="font-weight:400;font-size:16px">· ' + zusatz + '</span>' : '') + '</div>';
+  let h = '<div class="panel" id="todoPanel"><h2><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3E8E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>Aufgaben' +
+    '<button class="round" id="aufgPlus" aria-label="Neue Aufgabe" style="margin-left:auto;width:48px;height:48px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></h2><div class="tlist">';
+  aufgabenAbschnitte().forEach((sk) => {
+    h += kopf(sk.wer, sk.titel);
+    sk.items.forEach((it) => { h += taskBtn(it); });
+    if (sk.wer === 'N' && sk.items.every((it) => istErledigt(it.key))) h += '<div class="super">' + STAR + ' Super gemacht! ' + STAR + '</div>';
   });
   return h + '</div></div>';
+}
+// Neue einzelne Aufgabe: wer? was?
+function openNeueAufgabe() {
+  aufgInit();
+  const layer = $('layer');
+  let wer = null;
+  layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet" style="width:min(680px,100%)">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between"><h2>Neue Aufgabe</h2>' +
+    '<button class="round" id="closeBtn" aria-label="Schließen"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+    '<div style="font-size:20px;font-weight:700">Wer soll es machen?</div>' +
+    '<div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">' + werListe().map((w) => '<button class="tile" data-wer="' + w + '">' + werBild(w, 64) + '<span>' + esc(werName(w)) + '</span></button>').join('') + '</div>' +
+    '<label class="field" style="font-size:20px">Was soll gemacht werden?<input id="aufgText" type="text" maxlength="60" placeholder="z. B. Spielzeug aufräumen"></label>' +
+    '<button class="done-btn" id="doneBtn" disabled style="width:240px;height:64px;font-size:24px"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Fertig</button></div></div>';
+  const pruefen = () => { $('doneBtn').disabled = !(wer && $('aufgText').value.trim()); };
+  layer.querySelectorAll('[data-wer]').forEach((b) => b.onclick = () => {
+    wer = b.dataset.wer; layer.querySelectorAll('[data-wer]').forEach((x) => x.classList.toggle('on', x === b)); pruefen();
+  });
+  $('aufgText').oninput = pruefen;
+  $('aufgText').onkeydown = (ev) => { if (ev.key === 'Enter' && !$('doneBtn').disabled) $('doneBtn').click(); };
+  $('doneBtn').onclick = () => {
+    S.aufg.einzel.push({ id: 'e' + Date.now(), wer, wort: $('aufgText').value.trim(), erledigt: null });
+    save(); layer.innerHTML = ''; render();
+  };
+  $('closeBtn').onclick = () => { layer.innerHTML = ''; };
+  $('ov').onclick = (ev) => { if (ev.target.id === 'ov') layer.innerHTML = ''; };
 }
 const LOB = ['Juhu!', 'Super!', 'Prima!', 'Yeah!', 'Toll!', 'Klasse!', 'Spitze!'];
 function feiern(text, gross) {
@@ -1055,11 +1116,14 @@ function feiern(text, gross) {
   setTimeout(() => box.remove(), gross ? 3600 : 2600);
 }
 function aufgabeUmschalten(key) {
-  const neu = !S.done[key];
-  if (S.done[key]) delete S.done[key]; else S.done[key] = true;
+  const neu = !istErledigt(key);
+  if (key.startsWith('einzel|')) {
+    const e = S.aufg.einzel.find((x) => 'einzel|' + x.id === key);
+    if (e) e.erledigt = neu ? iso(today0()) : null;
+  } else if (neu) S.done[key] = true; else delete S.done[key];
   if (neu) {
-    const A = aufgabenFuer(), base = iso(A.d) + '|' + A.block + '|';
-    const alle = key.startsWith(base) && A.liste.every(([k]) => S.done[base + k]);
+    const sk = aufgabenAbschnitte().find((x) => x.items.some((it) => it.key === key));
+    const alle = sk && sk.items.every((it) => istErledigt(it.key));
     feiern(alle ? 'Alles geschafft!' : LOB[Math.floor(Math.random() * LOB.length)], alle);
   }
   // Alte Haken (älter als 3 Tage) aufräumen
@@ -1111,11 +1175,12 @@ function renderHome() {
   box.innerHTML = zeitleisteHtml(d, Math.max(240, box.clientHeight - 4));
   $('planPanel').onclick = () => { view = 'cal'; offset = 0; lastActive = Date.now(); render(); };
   $('todoPanel').querySelectorAll('[data-t]').forEach((b) => b.onclick = (ev) => { ev.stopPropagation(); aufgabeUmschalten(b.dataset.t); });
+  $('aufgPlus').onclick = (ev) => { ev.stopPropagation(); openNeueAufgabe(); };
   ladeWetter();
 }
 
 // ---------- Neue Version automatisch laden ----------
-const BUILD = '2026-11-28-1140';
+const BUILD = '2026-11-28-1200';
 async function pruefeUpdate() {
   try {
     const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -1379,7 +1444,7 @@ function openGate() {
 let tab = 'personen';
 function openParent() {
   const layer = $('layer');
-  const tabs = [['personen', 'Personen'], ['aktivitaeten', 'Aktivitäten'], ['woche', 'Standard-Woche'], ['besondere', 'Besondere Tage'], ['eintraege', 'Noras Einträge'], ['google', 'Google-Kalender'], ['anzeige', 'Anzeige']];
+  const tabs = [['personen', 'Personen'], ['aktivitaeten', 'Aktivitäten'], ['woche', 'Standard-Woche'], ['besondere', 'Besondere Tage'], ['eintraege', 'Noras Einträge'], ['aufgaben', 'Aufgaben'], ['google', 'Google-Kalender'], ['anzeige', 'Anzeige']];
   const curLabel = (tabs.find((t) => t[0] === tab) || tabs[0])[1];
   layer.innerHTML = '<div class="parent"><nav class="side" id="pside"><div class="brand">Eltern-Bereich</div>' +
     '<button class="mtoggle" id="mToggle" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>' + curLabel + '</span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7A7468" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>' +
@@ -1390,7 +1455,7 @@ function openParent() {
   $('pmain').addEventListener('click', () => side.classList.remove('open'));
   layer.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { tab = b.dataset.t; openParent(); });
   $('backBtn').onclick = () => { layer.innerHTML = ''; render(); };
-  ({ personen: tabPersonen, aktivitaeten: tabAktivitaeten, woche: tabWoche, besondere: tabBesondere, eintraege: tabEintraege, google: tabGoogle, anzeige: tabAnzeige })[tab]($('pmain'));
+  ({ personen: tabPersonen, aktivitaeten: tabAktivitaeten, woche: tabWoche, besondere: tabBesondere, eintraege: tabEintraege, aufgaben: tabAufgaben, google: tabGoogle, anzeige: tabAnzeige })[tab]($('pmain'));
 }
 
 function tabPersonen(el) {
@@ -1627,6 +1692,51 @@ function tabEintraege(el) {
     if (!armed) { armed = true; $('resetBtn').textContent = 'Wirklich alles zurücksetzen? Nochmal tippen'; return; }
     const keep = S.settings; S = defaults(); S.settings = keep; S.over = {}; save(); tabEintraege(el);
   };
+}
+
+let neuW = { wer: 'N', alle: 7 };
+function tabAufgaben(el) {
+  aufgInit();
+  const sel = 'border-color:#2A2A33;background:#2A2A33;color:#fff';
+  let h = '<h2>Aufgaben</h2><div class="muted" style="font-size:18px">Wiederkehrende Aufgaben erscheinen am Starttag und dann immer im gewählten Abstand auf der Startseite. Noras Aufgaben für morgens und abends sind fest eingebaut.</div>';
+  h += '<h2 style="font-size:24px;margin-top:10px">Wiederkehrende Aufgaben</h2>';
+  if (!S.aufg.wieder.length) h += '<div class="row muted" style="font-size:18px">Noch keine.</div>';
+  S.aufg.wieder.forEach((a) => {
+    const d = new Date(a.start + 'T00:00:00');
+    h += '<div class="row"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + aufgIcon(a.wort) + '</svg>' + werBild(a.wer, 36) +
+      '<div style="flex:1"><div style="font-size:19px;font-weight:700">' + esc(a.wort) + '</div><div class="muted">' + esc(werName(a.wer)) + ' · ' + rhythmusText(a.alle) + ' · ab ' + DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + '. ' + MONTHS[d.getMonth()] + '</div></div>' +
+      '<button class="pill-btn" data-wdel="' + esc(a.id) + '">Löschen</button></div>';
+  });
+  h += '<div class="row" style="flex-direction:column;align-items:stretch;gap:12px;margin-top:8px"><div style="font-size:20px;font-weight:700">Neue wiederkehrende Aufgabe</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:8px">' + werListe().map((w) => '<button class="pill-btn" data-nwer="' + w + '" style="display:flex;align-items:center;gap:8px;' + (neuW.wer === w ? sel : '') + '">' + werBild(w, 28) + esc(werName(w)) + '</button>').join('') + '</div>' +
+    '<label class="field">Was?<input id="nwText" type="text" maxlength="60" placeholder="z. B. Müll rausbringen"></label>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:8px">' + RHYTHMUS.map(([n, t]) => '<button class="pill-btn" data-nalle="' + n + '" style="' + (neuW.alle === n ? sel : '') + '">' + t + '</button>').join('') + '</div>' +
+    '<label class="field">Erster Tag<input id="nwStart" type="date" value="' + iso(today0()) + '"></label>' +
+    '<button class="done-btn" id="nwAdd" style="width:240px;height:60px;font-size:22px;align-self:flex-start">Hinzufügen</button></div>';
+  const offen = S.aufg.einzel.filter((e) => !e.erledigt);
+  h += '<h2 style="font-size:24px;margin-top:10px">Offene einzelne Aufgaben</h2><div class="muted">Werden auf der Startseite mit dem Plus angelegt und verschwinden am Tag nach dem Abhaken.</div>';
+  if (!offen.length) h += '<div class="row muted" style="font-size:18px">Keine offenen.</div>';
+  offen.forEach((e) => {
+    h += '<div class="row">' + werBild(e.wer, 36) + '<div style="flex:1"><div style="font-size:19px;font-weight:700">' + esc(e.wort) + '</div><div class="muted">' + esc(werName(e.wer)) + '</div></div><button class="pill-btn" data-edel="' + esc(e.id) + '">Löschen</button></div>';
+  });
+  el.innerHTML = h;
+  const merk = () => { neuW.text = $('nwText').value; neuW.start = $('nwStart').value; };
+  if (neuW.text) $('nwText').value = neuW.text;
+  if (neuW.start) $('nwStart').value = neuW.start;
+  el.querySelectorAll('[data-nwer]').forEach((b) => b.onclick = () => { merk(); neuW.wer = b.dataset.nwer; tabAufgaben(el); });
+  el.querySelectorAll('[data-nalle]').forEach((b) => b.onclick = () => { merk(); neuW.alle = +b.dataset.nalle; tabAufgaben(el); });
+  $('nwAdd').onclick = () => {
+    const wort = $('nwText').value.trim(), start = $('nwStart').value || iso(today0());
+    if (!wort) { $('nwText').focus(); return; }
+    S.aufg.wieder.push({ id: 'w' + Date.now(), wer: neuW.wer, wort, start, alle: neuW.alle });
+    neuW = { wer: neuW.wer, alle: neuW.alle };
+    save(); render(); tabAufgaben(el);
+  };
+  el.querySelectorAll('[data-wdel]').forEach((b) => b.onclick = () => {
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Wirklich?'; b.style.background = '#D6453D'; b.style.color = '#fff'; return; }
+    S.aufg.wieder = S.aufg.wieder.filter((a) => a.id !== b.dataset.wdel); save(); render(); tabAufgaben(el);
+  });
+  el.querySelectorAll('[data-edel]').forEach((b) => b.onclick = () => { S.aufg.einzel = S.aufg.einzel.filter((e) => e.id !== b.dataset.edel); save(); render(); tabAufgaben(el); });
 }
 
 function tabGoogle(el) {
