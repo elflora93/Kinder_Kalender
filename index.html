@@ -549,7 +549,7 @@ function matchTitle(title) {
     keys.forEach((k) => keywordsFor(k).forEach((w) => { if (t.indexOf(w) >= 0 && w.length > len) { hit = k; len = w.length; } }));
     return hit;
   };
-  const person = best(Object.keys(S.persons));
+  const person = best(begleiter());
   const sym = best(SYM_ACT());
   const day = best(Object.keys(DAYTYPES));
   let role = null;
@@ -1011,9 +1011,14 @@ function aufgInit() {
 }
 const RHYTHMUS = [[1, 'Jeden Tag'], [7, 'Jede Woche'], [14, 'Alle 2 Wochen'], [28, 'Alle 4 Wochen']];
 const rhythmusText = (n) => (RHYTHMUS.find((x) => x[0] === n) || [0, 'Alle ' + n + ' Tage'])[1];
-const werName = (w) => w === 'N' ? 'Nora' : ((S.persons[w] && S.persons[w].name) || '?');
-const werBild = (w, size) => w === 'N' ? STAR.replace(/width="24" height="24"/, 'width="' + size + '" height="' + size + '"') : avatar(w, size);
-const werListe = () => ['N'].concat(Object.keys(S.persons || {}));
+// Ist Nora als Person angelegt, gilt deren Schlüssel (mit Foto), sonst 'N' mit Stern
+function noraKey() { return Object.keys(S.persons || {}).find((x) => /^nora$/i.test((S.persons[x].name || '').trim())) || 'N'; }
+// Personen, die Nora bringen, abholen, ins Bett bringen oder besuchen können (ohne Nora selbst)
+function begleiter() { const n = noraKey(); return Object.keys(S.persons || {}).filter((k) => k !== n); }
+const werNorm = (w) => w === 'N' ? noraKey() : w;
+const werName = (w) => { w = werNorm(w); return w === 'N' ? 'Nora' : ((S.persons[w] && S.persons[w].name) || '?'); };
+const werBild = (w, size) => { w = werNorm(w); return w === 'N' ? STAR.replace(/width="24" height="24"/, 'width="' + size + '" height="' + size + '"') : avatar(w, size); };
+const werListe = () => { const n = noraKey(); return [n].concat(Object.keys(S.persons || {}).filter((k) => k !== n)); };
 const AUFG_ALLG = '<rect x="5" y="4" width="14" height="17" rx="2" fill="#FFF7D6" stroke="#B9770E"/><path d="M9 4V2.8h6V4M8.5 10l1.2 1.2 2-2.2M13.5 10.5h2M8.5 15l1.2 1.2 2-2.2M13.5 15.5h2" stroke="#B9770E"/>';
 function aufgIcon(wort) {
   const w = String(wort || '').toLowerCase();
@@ -1054,22 +1059,22 @@ function aufgabenAbschnitte() {
   const alle = wiederHeute().concat(einzelHeute());
   const sek = [];
   werListe().forEach((w) => {
-    let items = alle.filter((x) => x.wer === w);
-    if (w === 'N') items = A.liste.map(([k, wort]) => ({ wer: 'N', icon: AUFG_ICON[k], wort, key: base + k })).concat(items);
-    if (items.length) sek.push({ wer: w, titel: w === 'N' ? A.titel : '', items });
+    let items = alle.filter((x) => werNorm(x.wer) === w);
+    if (w === noraKey()) items = A.liste.map(([k, wort]) => ({ wer: 'N', icon: AUFG_ICON[k], wort, key: base + k })).concat(items);
+    if (items.length) sek.push({ wer: w, nora: w === noraKey(), titel: w === noraKey() ? A.titel : '', items });
   });
   return sek;
 }
 const HAKEN = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const taskBtn = (it) => { const ok = istErledigt(it.key); return '<button class="task' + (ok ? ' ok' : '') + '" data-t="' + esc(it.key) + '"><svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + it.icon + '</svg><span class="w">' + esc(it.wort) + '</span><span class="box">' + (ok ? HAKEN : '') + '</span></button>'; };
 function aufgabenPanel() {
-  const kopf = (w, zusatz) => '<div style="display:flex;align-items:center;gap:8px;font-size:clamp(18px,1.6vw,22px);font-weight:700;margin-top:4px">' + werBild(w, w === 'N' ? 26 : 32) + esc(werName(w)) + (zusatz ? '<span class="muted" style="font-weight:400;font-size:16px">· ' + zusatz + '</span>' : '') + '</div>';
+  const kopf = (w, zusatz) => '<div style="display:flex;align-items:center;gap:8px;font-size:clamp(18px,1.6vw,22px);font-weight:700;margin-top:4px">' + werBild(w, werNorm(w) === 'N' ? 26 : 32) + esc(werName(w)) + (zusatz ? '<span class="muted" style="font-weight:400;font-size:16px">· ' + zusatz + '</span>' : '') + '</div>';
   let h = '<div class="panel" id="todoPanel"><h2><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3E8E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>Aufgaben' +
     '<button class="round" id="aufgPlus" aria-label="Neue Aufgabe" style="margin-left:auto;width:48px;height:48px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></h2><div class="tlist">';
   aufgabenAbschnitte().forEach((sk) => {
     h += kopf(sk.wer, sk.titel);
     sk.items.forEach((it) => { h += taskBtn(it); });
-    if (sk.wer === 'N' && sk.items.every((it) => istErledigt(it.key))) h += '<div class="super">' + STAR + ' Super gemacht! ' + STAR + '</div>';
+    if (sk.nora && sk.items.every((it) => istErledigt(it.key))) h += '<div class="super">' + STAR + ' Super gemacht! ' + STAR + '</div>';
   });
   return h + '</div></div>';
 }
@@ -1180,7 +1185,7 @@ function renderHome() {
 }
 
 // ---------- Neue Version automatisch laden ----------
-const BUILD = '2026-11-28-1200';
+const BUILD = '2026-11-28-1210';
 async function pruefeUpdate() {
   try {
     const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -1250,7 +1255,7 @@ function openPicker(day, startM) {
     if (roles.length === 1) role = roles[0];
     let body = '<div class="tiles">' + roles.map((k) => '<button class="tile' + (role === k ? ' on' : '') + '" data-r="' + k + '">' + roleSvg(k, 72) + '<span>' + RNAME[k] + '</span></button>').join('') + '</div>';
     if (role) body += '<div class="step" style="font-size:22px">' + ASK[role] + '</div><div class="tiles">' +
-      Object.keys(S.persons).map((k) => '<button class="tile' + (k === rp ? ' on' : '') + '" data-p="' + k + '">' + avatar(k, 72) + '<span>' + esc(S.persons[k].name) + '</span></button>').join('') + '</div>';
+      begleiter().map((k) => '<button class="tile' + (k === rp ? ' on' : '') + '" data-p="' + k + '">' + avatar(k, 72) + '<span>' + esc(S.persons[k].name) + '</span></button>').join('') + '</div>';
     layer.innerHTML = '<div class="overlay" id="ov"><div class="sheet">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
         '<div style="display:flex;align-items:center;gap:14px"><button class="round" id="backBtn" aria-label="Zurück"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2A2A33" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>' +
@@ -1326,7 +1331,7 @@ function openEdit(day, it) {
     else { icon = symSvg(it.sym, 64); label = symLabel(it.sym); }
     // Bringen / Abholen / Ins Bett: große Personen-Kacheln, Uhrzeit nur über die drei Punkte
     const picker = canPick ? '<div class="step" style="font-size:22px">' + ASK[it.slot] + '</div><div class="tiles">' +
-      Object.keys(S.persons).map((k) => '<button class="tile' + (k === p ? ' on' : '') + '" data-p="' + k + '">' + avatar(k, 72) + '<span>' + esc(S.persons[k].name) + '</span></button>').join('') +
+      begleiter().map((k) => '<button class="tile' + (k === p ? ' on' : '') + '" data-p="' + k + '">' + avatar(k, 72) + '<span>' + esc(S.persons[k].name) + '</span></button>').join('') +
       '</div>' : '';
     const showTime = !canPick || more;
     const dur = e - s, dh = Math.floor(dur / 60), dm = dur % 60;
@@ -1625,7 +1630,7 @@ function tabWoche(el) {
     const cur = S.week[key][i];
     const opts = key === 'nachm'
       ? SYM_ACT().map((k) => [k, symSvg(k, 44), symLabel(k)])
-      : Object.keys(S.persons).map((k) => [k, avatar(k, 52), S.persons[k].name]);
+      : begleiter().map((k) => [k, avatar(k, 52), S.persons[k].name]);
     opts.push([null, '<span style="font-size:34px;color:#B5AB9A;line-height:52px">–</span>', key === 'nachm' ? 'Nichts' : 'Niemand']);
     choose('Jede Woche', ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][i] + ' · ' + label, opts, cur, (v) => { S.week[key][i] = v; save(); tabWoche(el); });
   });
@@ -1708,7 +1713,7 @@ function tabAufgaben(el) {
       '<button class="pill-btn" data-wdel="' + esc(a.id) + '">Löschen</button></div>';
   });
   h += '<div class="row" style="flex-direction:column;align-items:stretch;gap:12px;margin-top:8px"><div style="font-size:20px;font-weight:700">Neue wiederkehrende Aufgabe</div>' +
-    '<div style="display:flex;flex-wrap:wrap;gap:8px">' + werListe().map((w) => '<button class="pill-btn" data-nwer="' + w + '" style="display:flex;align-items:center;gap:8px;' + (neuW.wer === w ? sel : '') + '">' + werBild(w, 28) + esc(werName(w)) + '</button>').join('') + '</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:8px">' + werListe().map((w) => '<button class="pill-btn" data-nwer="' + w + '" style="display:flex;align-items:center;gap:8px;' + (werNorm(neuW.wer) === w ? sel : '') + '">' + werBild(w, 28) + esc(werName(w)) + '</button>').join('') + '</div>' +
     '<label class="field">Was?<input id="nwText" type="text" maxlength="60" placeholder="z. B. Müll rausbringen"></label>' +
     '<div style="display:flex;flex-wrap:wrap;gap:8px">' + RHYTHMUS.map(([n, t]) => '<button class="pill-btn" data-nalle="' + n + '" style="' + (neuW.alle === n ? sel : '') + '">' + t + '</button>').join('') + '</div>' +
     '<label class="field">Erster Tag<input id="nwStart" type="date" value="' + iso(today0()) + '"></label>' +
